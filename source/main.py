@@ -1,8 +1,7 @@
 import os.path
-
-from colorama import init, Fore, Back, Style
-from pandas._libs.parsers import defaultdict
-
+import random
+from colorama import init, Fore
+from players_army_configuration import players_army_configuration as players_cfg
 from database_handler import DatabaseHandler
 from player import Player
 from player import ATTACKER, DEFENDER
@@ -11,10 +10,8 @@ init()
 
 database = DatabaseHandler(os.path.join('..', 'database', 'database.db'))
 players_list = list()
-player_1 = Player("Warrià")
-player_2 = Player("Shuan")
-players_list.append(player_1)
-players_list.append(player_2)
+player_1 = None
+player_2 = None
 turn_list = list()
 phases = dict()
 
@@ -32,22 +29,36 @@ def load_game_configuration():
     phases[5]['phase_function'] = fight_phase
 
 
-def choose_players_faction(player_obj, rand=False):
-    # print(f"\t{player_obj.user_color}{player_obj.name}{Fore.RESET} is choosing a faction... ")
-    factions = database.get_factions()
+def army_players_configuration(random_player1=False, random_player2=False):
+    global player_1, player_2, players_list
 
-    if rand:
-        player_obj.set_faction(database.get_faction((player_obj.roll_players_dice(show_trow=False)
-                                                     % len(factions)) + 1)[0])
+    players = list(players_cfg.keys())
+    if random_player1:
+        player = players[players.index('default')]
+        while player == 'default':
+            player = players[random.randint(0, len(players) - 1)]
+            player_1 = Player(database, player, players_cfg[player])
     else:
-        for (faction_id, faction) in factions:
-            print(f"\t>> {faction}")
+        player = players[players.index('Warrià')]
+        player_1 = Player(database, player, players_cfg[player],
+                          database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+
+    if random_player2:
+        player = players[players.index('default')]
+        while player == 'default':
+            player = players[random.randint(0, len(players) - 1)]
+            player_2 = Player(database, player, players_cfg[player])
+    else:
+        player = players[players.index('Shuan')]
+        player_2 = Player(database, player, players_cfg[player],
+                          database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+
+    players_list.append(player_1)
+    players_list.append(player_2)
 
 
 def players_handshake():
     global turn_list
-    choose_players_faction(player_1, True)
-    choose_players_faction(player_2, True)
 
     # Roll for set up the attacker and the defender
     print("Rolling dices for setting up the attacker and the defender...")
@@ -101,26 +112,29 @@ def execute_phase(player):
 
 
 if __name__ == '__main__':
-    print("Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
+    try:
+        print("Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
 
-    load_game_configuration()
+        load_game_configuration()
 
-    # Players Handshake: configuration of factions, here will be selected which factions will fight
-    # choosing which one will be the attacker and which one will be the defender
-    players_handshake()
+        # Army selection: will assign
+        army_players_configuration(random_player1=False, random_player2=False)
 
-    # Army selection: will assign
+        # Players Handshake: configuration of factions, here will be selected which factions will fight
+        # choosing which one will be the attacker and which one will be the defender
+        players_handshake()
 
-    print()
-    for (game_turn, (attacker, defender)) in turn_list:
-        print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}")
-        attacker.players_turn = game_turn
-        defender.players_turn = game_turn
-
-        # Execute Attacker phase
-        execute_phase(attacker)
-        # Execute Defender phase
-        execute_phase(defender)
         print()
+        for (game_turn, (attacker, defender)) in turn_list:
+            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}")
+            attacker.players_turn = game_turn
+            defender.players_turn = game_turn
 
+            # Execute Attacker phase
+            execute_phase(attacker)
+            # Execute Defender phase
+            execute_phase(defender)
+            print()
 
+    except KeyboardInterrupt:
+        pass
