@@ -1,5 +1,3 @@
-from weapon import *
-
 
 class Model:
     def __init__(self, name, attributes_tuple):
@@ -13,6 +11,7 @@ class Model:
         self.invulnerable_save = attributes_tuple[6]
         self.feel_no_pain = attributes_tuple[7]
         self.position = None
+        self.weapons = list()
 
-    def set_weapon(self, name, weapon_attributes_tuple):
-        pass
+    def set_weapon(self, weapon):
+        self.weapons.append(weapon)

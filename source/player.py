@@ -1,6 +1,7 @@
 import random
 from colorama import Fore
 from model import Model
+from weapon import Weapon, MeleeWeapon, RangedWeapon
 
 ATTACKER = 0
 DEFENDER = 1
@@ -65,11 +66,16 @@ class Player:
 
     def load_army(self, army):
         for character in army['characters']:
-            # Append model
-            self.models.append(Model(character['name'], self.database.get_model_by_name(character['name'])[0]))
+            model = Model(character['name'], self.database.get_model_by_name(character['name'])[0])
 
-            for weapon in character['weapons']:
-                pass
+            for weapon in character['weapons']['melee']:
+                model.set_weapon(MeleeWeapon(weapon, self.database.get_melee_weapon_by_name(weapon)[0]))
+
+            for weapon in character['weapons']['ranged']:
+                model.set_weapon(RangedWeapon(weapon, self.database.get_ranged_weapon_by_name(weapon)[0]))
+
+            # Append model
+            self.models.append(model)
 
         for battleline in army['battleline']:
             pass

@@ -74,8 +74,8 @@ players_army_configuration = \
                     {
                         'name': 'Abaddon the Despoiler',
                         'weapons': {
-                            'melee': ['Talon of Horus - Melee', "Drach\'nyen"],
-                            'ranged': ['Talon of Horus - Ranged']
+                            'melee': ['Talon of Horus', "Drach\'nyen"],
+                            'ranged': ['Talon of Horus']
                         },
                         'warlord': True
                     }
