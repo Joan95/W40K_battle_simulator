@@ -26,6 +26,19 @@ class DatabaseHandler:
                            f'invulnerable_save, feel_no_pain FROM models WHERE name = \"{model_name}\"')
             return cursor.fetchall()
 
+    def get_model_keywords(self, model_name):
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
+            query = ''' 
+            SELECT k.name AS keyword 
+            FROM models m 
+            JOIN model_keywords mk ON m.id = mk.model_id 
+            JOIN keywords k ON mk.keyword_id = k.id 
+            WHERE m.name = ? '''
+            cursor.execute(query, (model_name,))
+            keywords = cursor.fetchall()
+            return [keyword[0] for keyword in keywords]
+
     def get_phases(self):
         with sqlite3.connect(self.database_path) as conn:
             cursor = conn.cursor()

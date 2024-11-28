@@ -96,9 +96,7 @@ def command_phase(player):
 
 def movement_phase(player):
     for unit in player.army.units:
-        for model in unit:
-            model.move()
-    pass
+        pass
 
 
 def shooting_phase(player):

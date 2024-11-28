@@ -66,7 +66,7 @@ players_army_configuration = \
                         ]
                     },
                     {
-                        'unit_name': 'Beast Snagga Boyz',
+                        'unit_name': 'Beastboss + Beast Snagga Boyz',
                         'models': [
                             {
                                 'name': 'Beastboss',

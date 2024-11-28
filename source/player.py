@@ -1,9 +1,7 @@
 import random
-from army import Army
+from army import Army, Model, Unit, MeleeWeapon, RangedWeapon
 from colorama import Fore
 from enums import PlayerRol
-from model import Model
-from weapon import MeleeWeapon, RangedWeapon
 
 # Constants for bold text
 bold_on = "\033[1m"
@@ -60,7 +58,7 @@ class Player:
     def make_announcement(self):
         print(f"\t{self.user_color}{self.name}{Fore.RESET} will play with "
               f"{self.faction} \'{self.detachment}\'{Fore.RESET}")
-        print(f"\t\t{', '.join(model.name for model in self.army.models)}")
+        print(f"\t\t{', '.join(unit.name for unit in self.army.units)}")
 
     def set_faction(self, faction_cfg):
         self.faction = f"{bold_on}{self.factions_color}{faction_cfg}{Fore.RESET}{bold_off}"
@@ -68,17 +66,23 @@ class Player:
     def set_detachment(self, detachment):
         self.detachment = f"{bold_on}{self.factions_color}{detachment}{Fore.RESET}{bold_off}"
 
-    def load_army(self, army):
-        for units in army['units']:
-            unit = list()
-            for model in units['models']:
+    def load_army(self, army_cfg):
+        for unit in army_cfg['units']:
+            tmp_models = list()
+
+            for model in unit['models']:
+                is_warlord = False
+                if 'warlord' in model:
+                    is_warlord = True
+
                 if 'amount' in model:
                     amount = model['amount']
                 else:
                     amount = 1
 
                 for x in range(amount):
-                    tmp_model = Model(model['name'], self.database.get_model_by_name(model['name'])[0])
+                    tmp_model = Model(model['name'], self.database.get_model_by_name(model['name'])[0],
+                                      self.database.get_model_keywords(model['name']), is_warlord)
 
                     for weapon in model['weapons']['melee']:
                         try:
@@ -92,10 +96,10 @@ class Player:
                         except IndexError:
                             print(f"Couldn't find {weapon} in database")
 
-                    # Append model
-                    self.army.add_model_into_army(tmp_model)
-                    unit.append(tmp_model)
-            self.army.add_unit_into_army(unit)
+                    tmp_models.append(tmp_model)
+            # Create Unit with models list
+            tmp_unit = Unit(unit['unit_name'], tmp_models)
+            self.army.add_unit_into_army(tmp_unit)
 
         print(f"\t{self.user_color}{self.name}{Fore.RESET} army has been loaded!")
 
