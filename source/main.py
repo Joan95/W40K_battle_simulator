@@ -1,5 +1,6 @@
 import os.path
 import random
+from map import Map, mapConfig1
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
@@ -10,7 +11,6 @@ init()
 
 database = DatabaseHandler(os.path.join('..', 'database', 'database.db'))
 players_list = list()
-turn_list = list()
 phases = dict()
 
 
@@ -49,7 +49,7 @@ def load_players_army(random_player1=False, random_player2=False):
             player = players[random.randint(0, len(players) - 1)]
             player_2 = Player(database, player, players_cfg[player])
     else:
-        player = players[players.index('Shuan')]
+        player = players[players.index('Victor')]
         player_2 = Player(database, player, players_cfg[player],
                           database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
@@ -59,9 +59,9 @@ def load_players_army(random_player1=False, random_player2=False):
     return player_1, player_2
 
 
-def players_handshake(player_1, player_2):
-    global turn_list
-
+def players_handshake(board_map, player_1, player_2):
+    player_1.set_up_the_map(board_map)
+    player_2.set_up_the_map(board_map)
     # Roll for set up the attacker and the defender
     print("[>>] - Rolling dices for setting up the attacker and the defender...")
     player_1.roll_players_dice()
@@ -74,19 +74,51 @@ def players_handshake(player_1, player_2):
 
     if player_1.last_roll_dice > player_2.last_roll_dice:
         player_1.set_rol(PlayerRol.ATTACKER.value)
+        player_1.set_deployment_zone(board_map.map.attacker_zone)
+        board.set_attacker(player_1)
         player_2.set_rol(PlayerRol.DEFENDER.value)
-        players_turn = (player_1, player_2)
+        player_2.set_deployment_zone(board_map.map.defender_zone)
+        board.set_defender(player_2)
     else:
         player_1.set_rol(PlayerRol.DEFENDER.value)
+        player_1.set_deployment_zone(board_map.map.defender_zone)
+        board.set_defender(player_1)
         player_2.set_rol(PlayerRol.ATTACKER.value)
+        player_2.set_deployment_zone(board_map.map.attacker_zone)
+        board.set_attacker(player_2)
+
+
+def initiatives(player_1, player_2):
+    print("[>>] - Rolling dices for deciding initiatives...")
+    player_1.roll_players_dice()
+    player_2.roll_players_dice()
+
+    while player_1.last_roll_dice == player_2.last_roll_dice:
+        print("[ *] - And it's been a DRAW! Re-rolling dices")
+        player_1.roll_players_dice()
+        player_2.roll_players_dice()
+
+    if player_1.last_roll_dice > player_2.last_roll_dice:
+        print(f"\t{player_1.name} will go first!")
+        players_turn = (player_1, player_2)
+    else:
+        print(f"\t{player_2.name} will go first!")
         players_turn = (player_2, player_1)
 
+    turns = list()
     for x in range(1, 6):
-        turn_list.append([x, players_turn])
+        turns.append([x, players_turn])
+    return turns
 
 
-def place_army_into_boardgame():
-    pass
+def place_army_into_boardgame(turns):
+    player_count = 0
+    players = turns[0][1]
+    while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
+        player = players[player_count % len(players)]
+        if player.has_units_to_deploy():
+            player.place_unit()
+        player_count += 1
 
 
 def command_phase(player):
@@ -122,6 +154,8 @@ def execute_phase(player):
 if __name__ == '__main__':
     try:
         print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
+        board = Map(mapConfig1)
+        board.place_objectives()
 
         load_game_configuration()
 
@@ -130,10 +164,16 @@ if __name__ == '__main__':
 
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender
-        players_handshake(p1, p2)
+        players_handshake(board, p1, p2)
+
+        # Initiatives
+        turn_list = initiatives(p1, p2)
+
+        # Print Boards configuration
+        board.display_board()
 
         # Place all the army in the board
-        place_army_into_boardgame()
+        place_army_into_boardgame(turn_list)
 
         print()
         for (game_turn, (attacker, defender)) in turn_list:

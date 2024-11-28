@@ -45,6 +45,7 @@ class Model:
         self.weapons = list()
         self.keywords = list(keywords)
         self.is_warlord = is_warlord
+        self.is_alive = True
 
     def set_weapon(self, weapon):
         self.weapons.append(weapon)
@@ -58,6 +59,8 @@ class Unit:
         self.name = name
         self.models = models
         self.is_warlord_in_the_unit = self.is_warlord_in_the_unit()
+        self.is_destroyed = False
+        self.has_been_deployed = False
 
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{bold_on}{self.name} (WL){bold_off}'
@@ -71,12 +74,30 @@ class Army:
     def __init__(self):
         self.warlord = None
         self.units = list()
+        self.units_left_to_deploy = 0
 
     def add_unit_into_army(self, unit):
         self.units.append(unit)
+        self.units_left_to_deploy += 1
+
+    def are_there_units_still_to_be_deployed(self):
+        if self.units_left_to_deploy > 0:
+            return True
+        else:
+            return False
 
     def set_warlord(self, warlord):
         self.warlord = warlord
+
+    def place_unit(self):
+        if self.units_left_to_deploy > 0:
+            for unit in self.units:
+                if not unit.has_been_deployed:
+                    unit.has_been_deployed = True
+                    self.units_left_to_deploy -= 1
+                    print(f"\t\t[>>] - Placed {unit.name} [left: {self.units_left_to_deploy}]")
+                    break
+            pass
 
     def move_unit(self, position):
         pass

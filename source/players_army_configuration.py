@@ -104,6 +104,43 @@ players_army_configuration = \
                 ],
             },
         },
+        'Victor': {
+            'faction': 'Astra Militarum',
+            'detachment': 'Combined Regiment',
+            'army': {
+                'units': [
+                    {
+                        'unit_name': 'Tech-Priest Enginseer + Infantry Squad',
+                        'models': [
+                            {
+                                'name': 'Tech-Priest Enginseer',
+                                'weapons': {
+                                    'ranged': ['Archeotech pistol'],
+                                    'melee': ['Enginseer axe', 'Servo-arm']
+                                },
+                                'warlord': True
+                            },
+                            {
+                                'name': 'Sergeant',
+                                'amount': 1,
+                                'weapons': {
+                                    'ranged': ['Laspistol'],
+                                    'melee': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Guardsman',
+                                'amount': 9,
+                                'weapons': {
+                                    'ranged': ['Lasgun'],
+                                    'melee': ['Close combat weapon']
+                                },
+                            },
+                        ]
+                    },
+                ],
+            },
+        },
         'Warrià': {
             'faction': 'Chaos Space Marines',
             'detachment': 'Veterans Of The Long War',
