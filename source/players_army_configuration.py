@@ -51,19 +51,57 @@ players_army_configuration = \
             'faction': 'Orks',
             'detachment': 'Da Big Hunt',
             'army': {
-                'characters': [
+                'units': [
                     {
-                        'name': 'Mozrog Skragbad',
-                        'weapons': {
-                            'melee': ["Big Chompa\'s Jaws", 'Gutrippa'],
-                            'ranged': ['Thump Gun']
-                        },
-                        'warlord': True
-                    }
+                        'unit_name': 'Mozrog Skragbad',
+                        'models': [
+                            {
+                                'name': 'Mozrog Skragbad',
+                                'weapons': {
+                                    'ranged': ['Thump gun'],
+                                    'melee': ["Big Chompa\'s jaws", 'Gutrippa']
+                                },
+                                'warlord': True
+                            }
+                        ]
+                    },
+                    {
+                        'unit_name': 'Beast Snagga Boyz',
+                        'models': [
+                            {
+                                'name': 'Beastboss',
+                                'weapons': {
+                                    'ranged': ['Shoota'],
+                                    'melee': ['Beast Snagga klaw', 'Beastchoppa']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Boy',
+                                'amount': 8,
+                                'weapons': {
+                                    'ranged': ['Slugga'],
+                                    'melee': ['Choppa']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Boy',
+                                'amount': 1,
+                                'weapons': {
+                                    'ranged': ['Thump gun'],
+                                    'melee': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Nob',
+                                'amount': 1,
+                                'weapons': {
+                                    'ranged': ['Slugga'],
+                                    'melee': ['Power snappa']
+                                },
+                            },
+                        ]
+                    },
                 ],
-                'battleline': [],
-                'dedicated_transports': [],
-                'other_datasheets': [],
             },
         },
         'Warrià': {

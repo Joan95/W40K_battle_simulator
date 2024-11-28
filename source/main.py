@@ -1,17 +1,15 @@
 import os.path
 import random
 from colorama import init, Fore
+from enums import GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
 from database_handler import DatabaseHandler
 from player import Player
-from player import ATTACKER, DEFENDER
 
 init()
 
 database = DatabaseHandler(os.path.join('..', 'database', 'database.db'))
 players_list = list()
-player_1 = None
-player_2 = None
 turn_list = list()
 phases = dict()
 
@@ -22,28 +20,30 @@ def load_game_configuration():
     for phase_name, phase_sequence in local_phases:
         phases[phase_sequence] = {'phase_name': phase_name, 'phase_function': None}
 
-    phases[1]['phase_function'] = command_phase
-    phases[2]['phase_function'] = movement_phase
-    phases[3]['phase_function'] = shooting_phase
-    phases[4]['phase_function'] = charge_phase
-    phases[5]['phase_function'] = fight_phase
+    phases[GamePhase.COMMAND_PHASE.value]['phase_function'] = command_phase
+    phases[GamePhase.MOVEMENT_PHASE.value]['phase_function'] = movement_phase
+    phases[GamePhase.SHOOTING_PHASE.value]['phase_function'] = shooting_phase
+    phases[GamePhase.CHARGE_PHASE.value]['phase_function'] = charge_phase
+    phases[GamePhase.FIGHT_PHASE.value]['phase_function'] = fight_phase
 
 
-def army_players_configuration(random_player1=False, random_player2=False):
-    global player_1, player_2, players_list
+def load_players_army(random_player1=False, random_player2=False):
+    global players_list
 
     players = list(players_cfg.keys())
     if random_player1:
+        player_1 = None
         player = players[players.index('default')]
         while player == 'default':
             player = players[random.randint(0, len(players) - 1)]
             player_1 = Player(database, player, players_cfg[player])
     else:
-        player = players[players.index('Warrià')]
+        player = players[players.index('Shuan')]
         player_1 = Player(database, player, players_cfg[player],
                           database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
     if random_player2:
+        player_2 = None
         player = players[players.index('default')]
         while player == 'default':
             player = players[random.randint(0, len(players) - 1)]
@@ -56,73 +56,86 @@ def army_players_configuration(random_player1=False, random_player2=False):
     players_list.append(player_1)
     players_list.append(player_2)
 
+    return player_1, player_2
 
-def players_handshake():
+
+def players_handshake(player_1, player_2):
     global turn_list
 
     # Roll for set up the attacker and the defender
-    print("Rolling dices for setting up the attacker and the defender...")
+    print("[>>] - Rolling dices for setting up the attacker and the defender...")
     player_1.roll_players_dice()
     player_2.roll_players_dice()
 
     while player_1.last_roll_dice == player_2.last_roll_dice:
-        print("\tAnd it's been a DRAW! Re-rolling dices")
+        print("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
     if player_1.last_roll_dice > player_2.last_roll_dice:
-        player_1.set_roll(ATTACKER)
-        player_2.set_roll(DEFENDER)
+        player_1.set_rol(PlayerRol.ATTACKER.value)
+        player_2.set_rol(PlayerRol.DEFENDER.value)
         players_turn = (player_1, player_2)
     else:
-        player_1.set_roll(DEFENDER)
-        player_2.set_roll(ATTACKER)
+        player_1.set_rol(PlayerRol.DEFENDER.value)
+        player_2.set_rol(PlayerRol.ATTACKER.value)
         players_turn = (player_2, player_1)
 
     for x in range(1, 6):
         turn_list.append([x, players_turn])
 
 
-def command_phase():
-    for player in players_list:
-        player.increment_command_points()
-
-
-def movement_phase():
+def place_army_into_boardgame():
     pass
 
 
-def shooting_phase():
+def command_phase(player):
+    for p in players_list:
+        p.increment_command_points()
+
+
+def movement_phase(player):
+    for unit in player.army.units:
+        for model in unit:
+            model.move()
     pass
 
 
-def charge_phase():
+def shooting_phase(player):
     pass
 
 
-def fight_phase():
+def charge_phase(player):
+    pass
+
+
+def fight_phase(player):
     pass
 
 
 def execute_phase(player):
     for phase_sequence in phases:
         phase = phases[phase_sequence]
-        print(f"\t[{player.players_turn}] >> {player.name} {phase['phase_name']}")
-        phase['phase_function']()
+        phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
+        print(f"\t[{player.players_turn}] >> {player.name} {phase_name_enum}")
+        phase['phase_function'](player)
 
 
 if __name__ == '__main__':
     try:
-        print("Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
+        print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
 
         load_game_configuration()
 
         # Army selection: will assign
-        army_players_configuration(random_player1=False, random_player2=False)
+        p1, p2 = load_players_army(random_player1=False, random_player2=False)
 
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender
-        players_handshake()
+        players_handshake(p1, p2)
+
+        # Place all the army in the board
+        place_army_into_boardgame()
 
         print()
         for (game_turn, (attacker, defender)) in turn_list:

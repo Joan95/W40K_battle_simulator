@@ -1,15 +1,20 @@
 import random
+from army import Army
 from colorama import Fore
+from enums import PlayerRol
 from model import Model
-from weapon import Weapon, MeleeWeapon, RangedWeapon
+from weapon import MeleeWeapon, RangedWeapon
 
-ATTACKER = 0
-DEFENDER = 1
+# Constants for bold text
 bold_on = "\033[1m"
 bold_off = "\033[0m"
+
+# List of adjectives for a six roll dice
 six_roll_dice_adjectives = ['Wonderful', 'Marvelous', 'Spectacular', 'Stunning', 'Glorius', 'Magnificent', 'Exquisite'
                             'Enchanting', 'Dazzling', 'Breathtaking', 'Fabulous', 'Remarkable', 'Astounding',
                             'Astonishing', 'Phenomenal', 'Superb']
+
+# List of available colors
 colors_list = [Fore.RED, Fore.LIGHTRED_EX, Fore.GREEN, Fore.LIGHTGREEN_EX, Fore.YELLOW,
                Fore.BLUE, Fore.LIGHTBLUE_EX, Fore.MAGENTA, Fore.LIGHTMAGENTA_EX, Fore.CYAN,
                Fore.LIGHTCYAN_EX, Fore.LIGHTWHITE_EX]
@@ -22,10 +27,9 @@ class Player:
         self.factions_color = None
         self.name = f"{bold_on}{name}{bold_off}"
         self.army_cfg = army_cfg
+        self.army = Army()
         self.faction = None
         self.detachment = self.army_cfg['detachment']
-        self.models = list()
-        self.units = list()
         self.rol = None
         self.last_roll_dice = None
         self.command_points = 0
@@ -46,8 +50,8 @@ class Player:
         print(f"\t\t{self.user_color}{self.name}{Fore.RESET} has incremented its command points in 1, "
               f"there's a total of {self.command_points}")
 
-    def set_roll(self, rol):
-        if rol == ATTACKER:
+    def set_rol(self, rol):
+        if rol == PlayerRol.ATTACKER.value:
             print(f"\t{self.user_color}{self.name}{Fore.RESET} will be the {Fore.RED}ATTACKER{Fore.RESET}")
         else:
             print(f"\t{self.user_color}{self.name}{Fore.RESET} will be the {Fore.BLUE}DEFENDER{Fore.RESET}")
@@ -56,7 +60,7 @@ class Player:
     def make_announcement(self):
         print(f"\t{self.user_color}{self.name}{Fore.RESET} will play with "
               f"{self.faction} \'{self.detachment}\'{Fore.RESET}")
-        print(f"\t\t{', '.join(model.name for model in self.models)}")
+        print(f"\t\t{', '.join(model.name for model in self.army.models)}")
 
     def set_faction(self, faction_cfg):
         self.faction = f"{bold_on}{self.factions_color}{faction_cfg}{Fore.RESET}{bold_off}"
@@ -65,35 +69,44 @@ class Player:
         self.detachment = f"{bold_on}{self.factions_color}{detachment}{Fore.RESET}{bold_off}"
 
     def load_army(self, army):
-        for character in army['characters']:
-            model = Model(character['name'], self.database.get_model_by_name(character['name'])[0])
+        for units in army['units']:
+            unit = list()
+            for model in units['models']:
+                if 'amount' in model:
+                    amount = model['amount']
+                else:
+                    amount = 1
 
-            for weapon in character['weapons']['melee']:
-                model.set_weapon(MeleeWeapon(weapon, self.database.get_melee_weapon_by_name(weapon)[0]))
+                for x in range(amount):
+                    tmp_model = Model(model['name'], self.database.get_model_by_name(model['name'])[0])
 
-            for weapon in character['weapons']['ranged']:
-                model.set_weapon(RangedWeapon(weapon, self.database.get_ranged_weapon_by_name(weapon)[0]))
+                    for weapon in model['weapons']['melee']:
+                        try:
+                            tmp_model.set_weapon(MeleeWeapon(weapon, self.database.get_melee_weapon_by_name(weapon)[0]))
+                        except IndexError:
+                            print(f"Couldn't find {weapon} in database")
 
-            # Append model
-            self.models.append(model)
+                    for weapon in model['weapons']['ranged']:
+                        try:
+                            tmp_model.set_weapon(RangedWeapon(weapon, self.database.get_ranged_weapon_by_name(weapon)[0]))
+                        except IndexError:
+                            print(f"Couldn't find {weapon} in database")
 
-        for battleline in army['battleline']:
-            pass
+                    # Append model
+                    self.army.add_model_into_army(tmp_model)
+                    unit.append(tmp_model)
+            self.army.add_unit_into_army(unit)
 
-        for transports in army['dedicated_transports']:
-            pass
-
-        for others in army['other_datasheets']:
-            pass
-
-        print(f"Army has been loaded")
+        print(f"\t{self.user_color}{self.name}{Fore.RESET} army has been loaded!")
 
     def roll_players_dice(self, sides=6, show_trow=True):
         self.last_roll_dice = random.randint(1, sides)
 
         if show_trow:
             if self.last_roll_dice == 6:
-                print(f"\t\t{bold_on}{Fore.LIGHTYELLOW_EX}{six_roll_dice_adjectives[random.randint(0, len(six_roll_dice_adjectives) -1 )].upper()}!{Fore.RESET}{bold_off} "
+                print(f"\t\t{bold_on}{Fore.LIGHTYELLOW_EX}"
+                      f"{six_roll_dice_adjectives[random.randint(0, len(six_roll_dice_adjectives) -1 )].upper()}!"
+                      f"{Fore.RESET}{bold_off} "
                       f"{self.user_color}{self.name}{Fore.RESET} rolled a "
                       f"{self.user_color}{self.last_roll_dice}{Fore.RESET}!")
             elif self.last_roll_dice == 1:

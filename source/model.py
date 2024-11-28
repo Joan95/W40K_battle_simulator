@@ -15,3 +15,6 @@ class Model:
 
     def set_weapon(self, weapon):
         self.weapons.append(weapon)
+
+    def move(self):
+        print(f"{self.name} moving!")
