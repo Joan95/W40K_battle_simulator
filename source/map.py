@@ -74,7 +74,7 @@ def get_adjacent_points(coord, distance=1):
     return adjacent_points
 
 
-class Map:
+class MainBoardMap:
     def __init__(self, configuration):
         self.map_configuration = configuration
         self.objectives = configuration.objectives
@@ -91,6 +91,9 @@ class Map:
     def start_the_game(self):
         self.has_game_started = True
         print("\t\tLet the game begin! Destroy your anuses!")
+
+    def is_cell_empty(self, coord):
+        return self.map_configuration.is_cell_empty(coord)
 
     def mark_deployment_zone(self, zone, symbol):
         minx, miny, maxx, maxy = map(int, zone.bounds)

@@ -1,6 +1,6 @@
 import os.path
 import random
-from map import Map, BoardHandle, Objective
+from map import MainBoardMap, BoardHandle, Objective
 from shapely.geometry import Point
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
@@ -114,7 +114,7 @@ def place_army_into_boardgame(turns):
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
         player = players[player_count % len(players)]
         if player.has_units_to_deploy():
-            player.place_unit()
+            player.deploy_unit()
         player_count += 1
 
 
@@ -132,7 +132,7 @@ def command_phase(active_player, inactive_player):
 
 def movement_phase(active_player, inactive_player):
     # Get enemy's alive units
-    enemy_units = inactive_player.get_units_alive()
+    enemy_units = inactive_player.get_alive_units()
     # Force units to target enemies based on its score
     active_player.army.target_enemies(enemy_units)
     active_player.move_units()
@@ -173,7 +173,7 @@ mapConfig1 = BoardHandle(
 if __name__ == '__main__':
     try:
         print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
-        board = Map(mapConfig1)
+        board = MainBoardMap(mapConfig1)
         board.place_objectives()
 
         load_game_configuration()

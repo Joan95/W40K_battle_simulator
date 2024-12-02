@@ -1,5 +1,6 @@
 import random
-from army import Army, Model, Unit, MeleeWeapon, RangedWeapon
+from army import Army, Model, Unit
+from weapon import MeleeWeapon, RangedWeapon
 from colorama import Fore
 from enums import PlayerRol
 
@@ -45,7 +46,7 @@ class Player:
         self.load_army(self.army_cfg['army'])
         self.make_announcement()
 
-    def get_units_alive(self):
+    def get_alive_units(self):
         return [unit for unit in self.army.units if not unit.is_destroyed]
 
     def has_units_to_deploy(self):
@@ -116,14 +117,18 @@ class Player:
         print(f"\t\t{', '.join(unit.name for unit in self.army.units)}")
 
     def move_units(self):
-        for unit in self.get_units_alive():
+        for unit in self.get_alive_units():
+            print(f'\t\tMoving {unit.name}')
+            print(f'\t\t\tUnit position before movement [{unit.unit_centroid}]')
+            print(f'\t\t\tUnit has targeted {unit.targeted_enemy_unit_to_chase.name} which centroid is at '
+                  f'[{unit.targeted_enemy_unit_to_chase.unit_centroid}]')
             unit.move_towards_target(self.board_map)
+            print(f'\t\t\tUnit position after movement [{unit.unit_centroid}]')
 
-    def place_unit(self):
+    def deploy_unit(self):
         unit_to_place = self.army.get_unit_to_place()
         print(f"\t\t{self.name} is placing unit {unit_to_place.name}")
-        self.board_map.place_unit(self.deployment_zone, unit_to_place)
-        unit_to_place.has_been_deployed = True
+        unit_to_place.deploy_unit_in_zone(self.board_map, self.deployment_zone)
 
     def set_deployment_zone(self, zone):
         self.deployment_zone = zone
