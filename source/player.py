@@ -116,7 +116,8 @@ class Player:
         print(f"\t\t{', '.join(unit.name for unit in self.army.units)}")
 
     def move_units(self):
-        self.army.move_units()
+        for unit in self.get_units_alive():
+            unit.move_towards_target(self.board_map)
 
     def place_unit(self):
         unit_to_place = self.army.get_unit_to_place()

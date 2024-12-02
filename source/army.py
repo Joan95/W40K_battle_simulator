@@ -1,5 +1,5 @@
-from colorama import Fore
 from enums import WeaponType
+from map import *
 
 # Constants for bold text
 bold_on = "\033[1m"
@@ -149,10 +149,6 @@ class Unit:
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{bold_on}{self.name} (WL){bold_off}'
 
-    def is_warlord_in_the_unit(self):
-        is_warlord = True in [model.is_warlord for model in self.models]
-        return is_warlord
-
     def calculate_unit_potential_attack_damage(self):
         self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
 
@@ -169,6 +165,59 @@ class Unit:
         self.unit_survivability = sum(model.wounds * model.model_potential_salvation for model in self.models
                                       if model.is_alive)
 
+    def check_unit_visibility(self):
+        is_visible = True in [model.is_visible for model in self.models]
+        return is_visible
+
+    def get_unit_movement(self):
+        return int(self.models[0].movement.replace('"', ''))
+
+    def is_warlord_in_the_unit(self):
+        is_warlord = True in [model.is_warlord for model in self.models]
+        return is_warlord
+
+    def move_towards_target(self, board_map):
+        target_position = None
+        model_idx = 0
+        while not target_position:
+            if self.targeted_enemy_unit_to_chase.models[model_idx].is_alive:
+                target_position = self.targeted_enemy_unit_to_chase.models[model_idx].position
+                break
+            model_idx += 1
+
+        # Move each model towards the target
+        for model in self.models:
+            if model.position:
+                # Calculate the direction to move
+                direction_x = target_position.x - model.position.x
+                direction_y = target_position.y - model.position.y
+                step = self.get_unit_movement()
+
+                # Calculate new position, handling division by zero
+                if direction_x != 0:
+                    new_x = model.position.x + step * (direction_x / abs(direction_x))
+                else:
+                    new_x = model.position.x
+
+                if direction_y != 0:
+                    new_y = model.position.y + step * (direction_y / abs(direction_y))
+                else:
+                    new_y = model.position.y
+                new_position = Point(new_x, new_y)
+
+                # Ensure the model stays within the map boundaries
+                new_position = board_map.clamp_position_within_boundaries(new_position)
+                # Update model's position on the board
+                self.update_model_position(board_map, model, new_position)
+
+    def update_model_position(self, board_map, model, new_position):
+        board_map.map_configuration.clear_model(model.position)
+        model.position = new_position
+        board_map.map_configuration.set_model(new_position, model)
+
+    def set_target(self, enemy_unit):
+        self.targeted_enemy_unit_to_chase = enemy_unit
+
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted
         self.calculate_unit_potential_attack_damage()
@@ -183,13 +232,6 @@ class Unit:
                                  self.unit_objective_control * 0.1 +
                                  self.unit_survivability * 0.15)
 
-    def check_unit_visibility(self):
-        is_visible = True in [model.is_visible for model in self.models]
-        return is_visible
-
-    def get_unit_movement(self):
-        return int(self.models[0].movement.replace('"', ''))
-
 
 class Army:
     def __init__(self):
@@ -200,24 +242,18 @@ class Army:
     def add_unit_into_army(self, unit):
         self.units.append(unit)
 
+    def are_there_units_still_to_be_deployed(self):
+        return self.check_units_left_to_deploy() > 0
+
+    def calculate_danger_score(self):
+        self.army_total_score = sum(unit.unit_total_score for unit in self.units if not unit.is_destroyed)
+
     def check_units_left_to_deploy(self):
         units_left_to_deploy = 0
         for unit in self.units:
             if not unit.has_been_deployed:
                 units_left_to_deploy += 1
         return units_left_to_deploy
-
-    def are_there_units_still_to_be_deployed(self):
-        if self.check_units_left_to_deploy() > 0:
-            return True
-        else:
-            return False
-
-    def calculate_danger_score(self):
-        self.army_total_score = sum(unit.unit_total_score for unit in self.units if not unit.is_destroyed)
-
-    def set_warlord(self, warlord):
-        self.warlord = warlord
 
     def get_unit_to_place(self):
         if self.check_units_left_to_deploy() > 0:
@@ -226,7 +262,27 @@ class Army:
                     return unit
 
     def move_units(self, position):
-        pass
+        for unit in self.units:
+            if not unit.is_destroyed:
+                unit.move_towards_target()
 
-    def target_enemies(self, enemies_list):
-        pass
+    def set_warlord(self, warlord):
+        self.warlord = warlord
+
+    def target_enemies(self, enemy_units):
+        for unit in self.units:
+            if not unit.is_destroyed and enemy_units:
+                # Find the most appropriate enemy unit to target based on proximity and weakness
+                target_candidates = [
+                    (enemy_unit, get_distance(unit, enemy_unit), enemy_unit.unit_total_score) for enemy_unit in enemy_units
+                ]
+                closest_and_weakest_enemy = target_candidates[0][0]
+                unit.set_target(closest_and_weakest_enemy)
+
+
+def get_distance(unit1, unit2):
+    pos1 = unit1.models[0].position
+    pos2 = unit2.models[0].position
+    if pos1 and pos2:
+        return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
+    return float('inf')

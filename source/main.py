@@ -1,6 +1,7 @@
 import os.path
 import random
-from map import Map, mapConfig1
+from map import Map, BoardHandle, Objective
+from shapely.geometry import Point
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
@@ -75,17 +76,13 @@ def players_handshake(board_map, player_1, player_2):
     if player_1.last_roll_dice > player_2.last_roll_dice:
         player_1.set_rol(PlayerRol.ATTACKER.value)
         player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
-        board.set_attacker(player_1)
         player_2.set_rol(PlayerRol.DEFENDER.value)
         player_2.set_deployment_zone(board_map.map_configuration.defender_zone)
-        board.set_defender(player_2)
     else:
         player_1.set_rol(PlayerRol.DEFENDER.value)
         player_1.set_deployment_zone(board_map.map_configuration.defender_zone)
-        board.set_defender(player_1)
         player_2.set_rol(PlayerRol.ATTACKER.value)
         player_2.set_deployment_zone(board_map.map_configuration.attacker_zone)
-        board.set_attacker(player_2)
 
 
 def initiatives(player_1, player_2):
@@ -139,6 +136,7 @@ def movement_phase(active_player, inactive_player):
     # Force units to target enemies based on its score
     active_player.army.target_enemies(enemy_units)
     active_player.move_units()
+    active_player.board_map.display_board()
 
 
 def shooting_phase(active_player, inactive_player):
@@ -159,6 +157,17 @@ def execute_phase(active_player, inactive_player):
         phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
         print(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}")
         phase['phase_function'](active_player, inactive_player)
+
+
+mapConfig1 = BoardHandle(
+    name="Map 1",
+    wide=44,
+    large=60,
+    attacker_zone=[Point(0, 0), Point(17, 0), Point(17, 43), Point(0, 43)],     # Rectangle
+    defender_zone=[Point(42, 0), Point(59, 0), Point(59, 43), Point(42, 43)],   # Rectangle
+    objectives=[Objective(coord=(9, 21)), Objective(coord=(49, 21)), Objective(coord=(21, 9)),
+                Objective(coord=(37, 9)), Objective(coord=(21, 33)), Objective(coord=(37, 33))]
+)
 
 
 if __name__ == '__main__':
