@@ -21,3 +21,13 @@ class MovementType(Enum):
 class PlayerRol(Enum):
     ATTACKER = 0
     DEFENDER = 1
+
+
+class Visibility(Enum):
+    VISIBLE = 0
+    INVISIBLE = 1
+
+
+class WeaponType(Enum):
+    MELEE = 0
+    RANGED = 1

@@ -49,7 +49,7 @@ def load_players_army(random_player1=False, random_player2=False):
             player = players[random.randint(0, len(players) - 1)]
             player_2 = Player(database, player, players_cfg[player])
     else:
-        player = players[players.index('Victor')]
+        player = players[players.index('Warrià')]
         player_2 = Player(database, player, players_cfg[player],
                           database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
@@ -74,17 +74,17 @@ def players_handshake(board_map, player_1, player_2):
 
     if player_1.last_roll_dice > player_2.last_roll_dice:
         player_1.set_rol(PlayerRol.ATTACKER.value)
-        player_1.set_deployment_zone(board_map.map.attacker_zone)
+        player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
         board.set_attacker(player_1)
         player_2.set_rol(PlayerRol.DEFENDER.value)
-        player_2.set_deployment_zone(board_map.map.defender_zone)
+        player_2.set_deployment_zone(board_map.map_configuration.defender_zone)
         board.set_defender(player_2)
     else:
         player_1.set_rol(PlayerRol.DEFENDER.value)
-        player_1.set_deployment_zone(board_map.map.defender_zone)
+        player_1.set_deployment_zone(board_map.map_configuration.defender_zone)
         board.set_defender(player_1)
         player_2.set_rol(PlayerRol.ATTACKER.value)
-        player_2.set_deployment_zone(board_map.map.attacker_zone)
+        player_2.set_deployment_zone(board_map.map_configuration.attacker_zone)
         board.set_attacker(player_2)
 
 
@@ -121,34 +121,44 @@ def place_army_into_boardgame(turns):
         player_count += 1
 
 
-def command_phase(player):
-    for p in players_list:
-        p.increment_command_points()
+def command_phase(active_player, inactive_player):
+    # Calculate current army score
+    active_player.army.calculate_danger_score()
+    active_player.increment_command_points()
+    inactive_player.army.calculate_danger_score()
+    inactive_player.increment_command_points()
+
+    for unit in active_player.army.units:
+        if len(unit.models) < unit.unit_initial_force / 2:
+            print(f"Unit {unit.name} at half of its initial force, will have to trow the dices for checking its moral")
 
 
-def movement_phase(player):
-    for unit in player.army.units:
-        pass
+def movement_phase(active_player, inactive_player):
+    # Get enemy's alive units
+    enemy_units = inactive_player.get_units_alive()
+    # Force units to target enemies based on its score
+    active_player.army.target_enemies(enemy_units)
+    active_player.move_units()
 
 
-def shooting_phase(player):
+def shooting_phase(active_player, inactive_player):
     pass
 
 
-def charge_phase(player):
+def charge_phase(active_player, inactive_player):
     pass
 
 
-def fight_phase(player):
+def fight_phase(active_player, inactive_player):
     pass
 
 
-def execute_phase(player):
+def execute_phase(active_player, inactive_player):
     for phase_sequence in phases:
         phase = phases[phase_sequence]
         phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
-        print(f"\t[{player.players_turn}] >> {player.name} {phase_name_enum}")
-        phase['phase_function'](player)
+        print(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}")
+        phase['phase_function'](active_player, inactive_player)
 
 
 if __name__ == '__main__':
@@ -175,6 +185,14 @@ if __name__ == '__main__':
         # Place all the army in the board
         place_army_into_boardgame(turn_list)
 
+        # If here all the Units have been displayed so the game can start!
+        board.start_the_game()
+
+        # Remove Attackers and defenders zone
+        board.remove_attacker_defender_zone()
+
+        board.display_board()
+
         print()
         for (game_turn, (attacker, defender)) in turn_list:
             print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}")
@@ -182,9 +200,9 @@ if __name__ == '__main__':
             defender.players_turn = game_turn
 
             # Execute Attacker phase
-            execute_phase(attacker)
+            execute_phase(attacker, defender)
             # Execute Defender phase
-            execute_phase(defender)
+            execute_phase(defender, attacker)
             print()
 
     except KeyboardInterrupt:

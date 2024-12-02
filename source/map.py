@@ -1,5 +1,5 @@
+import random
 from colorama import Fore
-from random import random
 from shapely.geometry import Point, Polygon
 
 # Constants for bold text
@@ -31,43 +31,47 @@ class BoardHandle:
     def set_objective(self, coord):
         self.boardgame[int(coord.y)][int(coord.x)] = f'{Fore.YELLOW}{bold_on}OB{Fore.RESET}{bold_off}'
 
-    def display_board_game(self, has_game_started):
-        if has_game_started:
-            # Do not print attackers nor defenders zone, just print units on the field
-            pass
+    def set_model(self, coord, model):
+        self.boardgame[int(coord.y)][int(coord.x)] = f'{bold_on}{model.name[0:2]}{bold_off}'
+        model.position = coord
+        model.is_alive = True
+
+    def display_board_game(self):
+        # Print configuration for seeing how the map looks like
+        print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+        for count, row in enumerate(self.boardgame, start=0):
+            print(f"\t{'{:02}'.format(count)}|{' '.join(f'{str(cell):2}' for cell in row)}|")
+        print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+
+    def get_random_point_in_zone(self, zone):
+        minx, miny, maxx, maxy = map(int, zone.bounds)
+
+        while True:
+            random_x = random.randint(minx, maxx)
+            random_y = random.randint(miny, maxy)
+            point = Point(random_x, random_y)
+            if zone.contains(point) or zone.touches(point):
+                return Point(random_x, random_y)
+
+    def is_cell_empty(self, coord):
+        x, y = int(coord.x), int(coord.y)
+        if self.boardgame[y][x] != ' ' and self.boardgame[y][x] != 'A' and self.boardgame[y][x] != 'D':
+            return False
         else:
-            # Print configuration for seeing how the map looks like
-            print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
-            for count, row in enumerate(self.boardgame, start=0):
-                print(f"\t{'{:02}'.format(count)}|{' '.join(f'{str(cell):2}' for cell in row)}|")
-            print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+            return True
 
-    def get_random_point_within_attacker_zone(self):
-        zone = self.attacker_zone
-        minx, miny, maxx, maxy = map(int, zone.bounds)
-
-        while True:
-            random_x = random.randint(minx, maxx)
-            random_y = random.randint(miny, maxy)
-            point = Point(random_x, random_y)
-            if zone.contains(point) or zone.touches(point):
-                return random_x, random_y
-
-    def get_random_point_within_defender_zone(self):
-        zone = self.defender_zone
-        minx, miny, maxx, maxy = map(int, zone.bounds)
-
-        while True:
-            random_x = random.randint(minx, maxx)
-            random_y = random.randint(miny, maxy)
-            point = Point(random_x, random_y)
-            if zone.contains(point) or zone.touches(point):
-                return random_x, random_y
+    def get_adjacent_points(self, coord, distance=1):
+        x, y = coord.x, coord.y
+        adjacent_points = [
+            Point(x + dx, y + dy) for dx in range(-distance, distance + 1)
+            for dy in range(-distance, distance + 1) if (dx, dy) != (0, 0)
+        ]
+        return adjacent_points
 
 
 class Map:
     def __init__(self, configuration):
-        self.map = configuration
+        self.map_configuration = configuration
         self.attacker = None
         self.defender = None
         self.objectives = configuration.objectives
@@ -75,36 +79,54 @@ class Map:
 
     def set_attacker(self, attacker):
         self.attacker = attacker
-        self.mark_deployment_zone(self.map.attacker_zone, 'A')
+        self.mark_deployment_zone(self.map_configuration.attacker_zone, 'A')
 
     def set_defender(self, defender):
         self.defender = defender
-        self.mark_deployment_zone(self.map.defender_zone, 'D')
+        self.mark_deployment_zone(self.map_configuration.defender_zone, 'D')
+
+    def start_the_game(self):
+        self.has_game_started = True
+        print("\t\tLet the game begin! Destroy your anuses!")
 
     def mark_deployment_zone(self, zone, symbol):
         minx, miny, maxx, maxy = map(int, zone.bounds)
         for y in range(miny, maxy + 1):
             for x in range(minx, maxx + 1):
-                if zone.intersects(Point(x, y)) and self.map.boardgame[y][x] == " ":
-                    self.map.boardgame[y][x] = symbol
+                if zone.intersects(Point(x, y)) and self.map_configuration.is_cell_empty(Point(x, y)):
+                    self.map_configuration.boardgame[y][x] = symbol
+
+    def remove_attacker_defender_zone(self):
+        self.mark_deployment_zone(self.map_configuration.attacker_zone, ' ')
+        self.mark_deployment_zone(self.map_configuration.defender_zone, ' ')
 
     def place_objectives(self):
         for objective in self.objectives:
             coord = Point(objective.coord)
             try:
-                self.map.set_objective(coord)
+                self.map_configuration.set_objective(coord)
             except IndexError:
                 print(f"Objective at point {coord} could not be set!")
 
-    def place_unit(self, unit):
-        pass
+    def place_unit(self, zone, unit):
+        first_model_point = self.map_configuration.get_random_point_in_zone(zone)
+        self.map_configuration.set_model(first_model_point, unit.models[0])
+        adjacent_points = self.map_configuration.get_adjacent_points(first_model_point)
+        model_index = 1
+        while model_index < len(unit.models) and adjacent_points:
+            point = adjacent_points.pop(0)
+            if 0 <= point.x < self.map_configuration.large and 0 <= point.y < self.map_configuration.wide:
+                if self.map_configuration.is_cell_empty(point) and (zone.contains(point) or zone.touches(point)):
+                    self.map_configuration.set_model(point, unit.models[model_index])
+                    model_index += 1
+                    adjacent_points.extend(self.map_configuration.get_adjacent_points(point))
+        # self.display_board()
 
     def display_board(self):
-        if not self.has_game_started:
-            print("Map configuration:")
-        else:
-            print("Game Board:")
-        self.map.display_board_game(self.has_game_started)
+        print()
+        print("\tGame Board:")
+        self.map_configuration.display_board_game()
+        print()
 
 
 mapConfig1 = BoardHandle(
