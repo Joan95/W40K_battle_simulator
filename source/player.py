@@ -1,17 +1,24 @@
 import random
-from army import Army, Model, Unit
+from army import Army
+from unit import Unit
+from model import Model
 from weapon import MeleeWeapon, RangedWeapon
 from colorama import Fore
 from enums import PlayerRol
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
 
 # Constants for bold text
 bold_on = "\033[1m"
 bold_off = "\033[0m"
 
-# List of adjectives for a six roll dice
+# List of adjectives for a six-roll dice
 six_roll_dice_adjectives = [
-    'Wonderful', 'Marvelous', 'Spectacular', 'Stunning', 'Glorius', 'Magnificent', 'Exquisite', 'Enchanting',
-    'Dazzling', 'Breathtaking', 'Fabulous', 'Remarkable', 'Astounding', 'Astonishing', 'Phenomenal', 'Superb']
+    'Wonderful', 'Marvelous', 'Spectacular', 'Stunning', 'Glorious', 'Magnificent', 'Exquisite', 'Enchanting',
+    'Dazzling', 'Breathtaking', 'Fabulous', 'Remarkable', 'Astounding', 'Astonishing', 'Phenomenal', 'Superb'
+]
 
 # List of available colors
 colors_list = [Fore.RED, Fore.LIGHTRED_EX, Fore.GREEN, Fore.LIGHTGREEN_EX, Fore.YELLOW,
@@ -23,143 +30,145 @@ class Player:
     def __init__(self, database, name=None, army_cfg=None, faction_color=None):
         self.database = database
         self.board_map = None
-        self.user_color = colors_list[random.randint(0, len(colors_list) - 1)]
-        self.factions_color = None
+        self.user_color = random.choice(colors_list)
+        self.factions_color = self.set_color(faction_color)
         self.name = f"{self.user_color}{bold_on}{name}{bold_off}{Fore.RESET}"
         self.army_cfg = army_cfg
         self.army = Army()
         self.faction = None
-        self.detachment = self.army_cfg['detachment']
+        self.detachment = None
         self.rol = None
         self.deployment_zone = None
         self.last_roll_dice = None
         self.command_points = 0
         self.players_turn = 0
 
-        if faction_color == 'Red':
-            self.factions_color = Fore.RED
-        elif faction_color == 'Green':
-            self.factions_color = Fore.GREEN
-
-        self.set_faction(self.army_cfg['faction'])
-        self.set_detachment(self.army_cfg['detachment'])
-        self.load_army(self.army_cfg['army'])
+        self.set_faction(army_cfg.get('faction'))
+        self.set_detachment(army_cfg.get('detachment'))
+        self.load_army(army_cfg.get('army'))
         self.make_announcement()
 
+    @staticmethod
+    def set_color(color_name):
+        """Set faction color based on the name."""
+        color_mapping = {
+            "Red": Fore.RED,
+            "Green": Fore.GREEN
+        }
+        return color_mapping.get(color_name, Fore.RESET)
+
     def get_alive_units(self):
+        """Return a list of alive units."""
         return [unit for unit in self.army.units if not unit.is_destroyed]
 
     def has_units_to_deploy(self):
+        """Check if there are units left to deploy."""
         return self.army.are_there_units_still_to_be_deployed()
 
     def increment_command_points(self):
+        """Increase command points and notify the player."""
         self.command_points += 1
-        print(f"\t\t{self.name} has incremented its command points by 1, "
-              f"bringing the total to {self.command_points}")
+        logging.info(f"{self.name} has gained a command point, total: {self.command_points}")
 
     def load_army(self, army_cfg):
-        for unit in army_cfg['units']:
+        """Load the player's army based on the provided configuration."""
+        if not army_cfg:
+            logging.warning(f"{self.name} has no army configuration provided.")
+            return
+        for unit in army_cfg.get('units', []):
             self.load_unit(unit)
-        print(f"\t{self.name} army has been loaded!")
+        logging.info(f"{self.name}'s army has been loaded!")
 
     def load_unit(self, unit_cfg):
-        models_list = []
-
-        for models in unit_cfg['models']:
-            models_list.extend(self.load_models(models))
-
-        # Create Unit with models list
-        tmp_unit = Unit(unit_cfg['unit_name'], models_list)
-        self.army.add_unit_into_army(tmp_unit)
+        """Load a unit and its models."""
+        models_list = [model for models_cfg in unit_cfg.get('models', []) for model in self.load_models(models_cfg)]
+        if models_list:
+            tmp_unit = Unit(unit_cfg['unit_name'], models_list)
+            self.army.add_unit_into_army(tmp_unit)
 
     def load_models(self, models_cfg):
+        """Load models for a unit."""
         is_warlord = 'warlord' in models_cfg
         amount = models_cfg.get('amount', 1)
         models_list = []
-
         try:
             model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
             for _ in range(amount):
-                models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
-                                                   is_warlord))
+                models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'], is_warlord))
             return models_list
         except IndexError:
-            print(f"Model {models_cfg['name']} not found!")
+            logging.error(f"Model {models_cfg['name']} not found in the database!")
+            return []
 
     def load_model(self, model_name, model_attributes, model_weapons_cfg, is_warlord=False):
+        """Load a single model with its attributes and weapons."""
         weapon_list = []
-        for weapon in model_weapons_cfg['melee']:
-            try:
-                melee_weapon = MeleeWeapon(weapon,
-                                           self.database.get_melee_weapon_by_name(
-                                               weapon, self.database.get_model_id_by_name(model_name)[0][0])[0]
-                                           )
-                weapon_list.append(melee_weapon)
-            except IndexError:
-                print(f"Couldn't find {weapon} in the database")
-
-        for weapon in model_weapons_cfg['ranged']:
-            try:
-                ranged_weapon = RangedWeapon(weapon,
-                                             self.database.get_ranged_weapon_by_name(
-                                                 weapon, self.database.get_model_id_by_name(model_name)[0][0])[0])
-                weapon_list.append(ranged_weapon)
-            except IndexError:
-                print(f"Couldn't find {weapon} in database")
-
+        for weapon_type, weapon_list_cfg in model_weapons_cfg.items():
+            for weapon_name in weapon_list_cfg:
+                try:
+                    weapon_cls = MeleeWeapon if weapon_type == "melee" else RangedWeapon
+                    weapon_data = self.database.get_melee_weapon_by_name(
+                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
+                    )[0] if weapon_type == "melee" else self.database.get_ranged_weapon_by_name(
+                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
+                    )[0]
+                    weapon_list.append(weapon_cls(weapon_name, weapon_data))
+                except IndexError:
+                    logging.error(f"Weapon {weapon_name} not found in the database!")
         model_keywords = self.database.get_model_keywords(model_name)
-        tmp_model = Model(model_name, model_attributes, weapon_list, model_keywords, is_warlord)
-        return tmp_model
+        return Model(model_name, model_attributes, weapon_list, model_keywords, is_warlord)
 
     def make_announcement(self):
-        print(f"\t{self.name} will play with "
-              f"{self.faction} \'{self.detachment}\'{Fore.RESET}")
-        print(f"\t\t{', '.join(unit.name for unit in self.army.units)}")
+        """Announce the player's faction and detachment."""
+        logging.info(f"{self.name} will play with {self.faction} '{self.detachment}'")
+        logging.info(f"Units: {', '.join(unit.name for unit in self.army.units)}")
 
     def move_units(self):
+        """Move units towards their targets."""
         for unit in self.get_alive_units():
-            print(f'\t\tMoving {unit.name}')
-            print(f'\t\t\tUnit position before movement [{unit.unit_centroid}]')
-            print(f'\t\t\tUnit has targeted {unit.targeted_enemy_unit_to_chase.name} which centroid is at '
-                  f'[{unit.targeted_enemy_unit_to_chase.unit_centroid}]')
+            logging.info(f"Moving {unit.name}")
             unit.move_towards_target(self.board_map)
-            print(f'\t\t\tUnit position after movement [{unit.unit_centroid}]')
 
     def deploy_unit(self):
+        """Deploy a unit into the player's zone."""
         unit_to_place = self.army.get_unit_to_place()
-        print(f"\t\t{self.name} is placing unit {unit_to_place.name}")
-        unit_to_place.deploy_unit_in_zone(self.board_map, self.deployment_zone)
+        if unit_to_place:
+            logging.info(f"{self.name} is placing unit {unit_to_place.name}")
+            unit_to_place.deploy_unit_in_zone(self.board_map, self.deployment_zone)
+        else:
+            logging.warning(f"{self.name} has no units left to deploy!")
 
     def set_deployment_zone(self, zone):
+        """Set the player's deployment zone."""
         self.deployment_zone = zone
 
     def set_detachment(self, detachment):
+        """Set the player's detachment."""
         self.detachment = f"{bold_on}{self.factions_color}{detachment}{Fore.RESET}{bold_off}"
 
     def set_faction(self, faction_cfg):
+        """Set the player's faction."""
         self.faction = f"{bold_on}{self.factions_color}{faction_cfg}{Fore.RESET}{bold_off}"
 
     def set_rol(self, rol):
-        if rol == PlayerRol.ATTACKER.value:
-            print(f"\t{self.name} will be the {Fore.RED}ATTACKER{Fore.RESET}")
-        else:
-            print(f"\t{self.name} will be the {Fore.BLUE}DEFENDER{Fore.RESET}")
+        """Set the player's role (attacker or defender)."""
+        role_colors = {
+            PlayerRol.ATTACKER.value: Fore.RED,
+            PlayerRol.DEFENDER.value: Fore.BLUE,
+        }
+        role_color = role_colors.get(rol, Fore.RESET)
+        role_name = "ATTACKER" if rol == PlayerRol.ATTACKER.value else "DEFENDER"
+        logging.info(f"{self.name} will be the {role_color}{role_name}{Fore.RESET}")
         self.rol = rol
 
     def set_up_the_map(self, board_map):
+        """Set the player's board map."""
         self.board_map = board_map
 
     def roll_players_dice(self, sides=6, show_throw=True):
+        """Roll a dice and display the result."""
         self.last_roll_dice = random.randint(1, sides)
-
         if show_throw:
-            if self.last_roll_dice == 6:
-                print(f"\t\t{bold_on}{Fore.LIGHTYELLOW_EX}"
-                      f"{six_roll_dice_adjectives[random.randint(0, len(six_roll_dice_adjectives) -1)].upper()}!"
-                      f"{Fore.RESET}{bold_off} "
-                      f"{self.name} rolled a {self.user_color}{self.last_roll_dice}{Fore.RESET}!")
-            elif self.last_roll_dice == 1:
-                print(f"\t\tOuch... {self.name} rolled a {self.user_color}{self.last_roll_dice}{Fore.RESET}")
-            else:
-                print(f"\t\t{self.name} rolled a {self.user_color}{self.last_roll_dice}{Fore.RESET}")
+            adjective = random.choice(six_roll_dice_adjectives).upper() if self.last_roll_dice == 6 else ""
+            logging.info(f"{self.name} rolled a {self.user_color}{self.last_roll_dice}{Fore.RESET} {adjective}")
         return self.last_roll_dice
