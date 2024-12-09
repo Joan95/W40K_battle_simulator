@@ -3,50 +3,8 @@
 players_army_configuration = \
     {
         'default': {
-            'faction': None,
-            'detachment': None,
-            'characters': [
-                {
-                    'name': None,
-                    'weapons': {
-                        'melee': [],
-                        'ranged': []
-                    },
-                    'warlord': False,
-                    'leading': None,
-                }
-            ],
-            'battleline': [
-                {
-                    'name': None,
-                    'weapons': {
-                        'melee': [],
-                        'ranged': []
-                    },
-                }
-            ],
-            'dedicated_transports': [
-                {
-                    'name': None,
-                    'weapons': {
-                        'melee': [],
-                        'ranged': []
-                    },
-                    'is_transport': False,
-                }
-            ],
-            'other_datasheets': [
-                {
-                    'name': None,
-                    'weapons': {
-                        'melee': [],
-                        'ranged': []
-                    },
-                    'is_transport': False,
-                }
-            ],
-        },
 
+        },
         'Shuan': {
             'faction': 'Orks',
             'detachment': 'Da Big Hunt',
@@ -145,71 +103,52 @@ players_army_configuration = \
             'faction': 'Chaos Space Marines',
             'detachment': 'Veterans Of The Long War',
             'army': {
-                'characters': [
+                'units': [
                     {
-                        'name': 'Abaddon the Despoiler',
-                        'weapons': {
-                            'melee': ['Talon of Horus', "Drach\'nyen"],
-                            'ranged': ['Talon of Horus']
-                        },
-                        'warlord': True
-                    }
-                ],
-                'battleline': [],
-                'dedicated_transports': [],
-                'other_datasheets': [],
+                        'unit_name': 'Abaddon da pussy + Termis',
+                        'models': [
+                            {
+                                'name': 'Abaddon the Despoiler',
+                                'weapons': {
+                                    'melee': ['Talon of Horus', "Drach\'nyen"],
+                                    'ranged': ['Talon of Horus']
+                                },
+                                'warlord': True
+                            },
+                            {
+                                'name': 'Terminator Champion',
+                                'amount': 1,
+                                'weapons': {
+                                    'ranged': ['Combi-bolter'],
+                                    'melee': ['Accursed weapon']
+                                }
+                            },
+                            {
+                                'name': 'Chaos Terminator',
+                                'amount': 4,
+                                'weapons': {
+                                    'ranged': ['Combi-bolter'],
+                                    'melee': ['Accursed weapon']
+                                }
+                            }
+                        ]
+                    },
+                ]
             },
         },
         'Uri': {
-            'faction': 'Orks',
-            'detachment': 'Da Big Hunt',
-            'characters': [
-                {
-                    'name': 'Mozrog Skragbad',
-                    'weapons': {
-                        'melee': ["Big Chompa\'s Jaws", 'Gutrippa'],
-                        'ranged': ['Thump Gun']
-                    },
-                    'warlord': True
-                }
-            ],
-            'battleline': [],
-            'dedicated_transports': [],
-            'other_datasheets': [],
+            'faction': 'Space Wolves',
+            'detachment': '',
+            'army': {}
         },
         'Berni': {
-            'faction': 'Orks',
-            'detachment': 'Da Big Hunt',
-            'characters': [
-                {
-                    'name': 'Mozrog Skragbad',
-                    'weapons': {
-                        'melee': ["Big Chompa\'s Jaws", 'Gutrippa'],
-                        'ranged': ['Thump Gun']
-                    },
-                    'warlord': True
-                }
-            ],
-            'battleline': [],
-            'dedicated_transports': [],
-            'other_datasheets': [],
+            'faction': 'Space Wolves',
+            'detachment': '',
+            'army': {}
         },
         'Marc': {
             'faction': 'Orks',
-            'detachment': 'Da Big Hunt',
-            'characters': [
-                {
-                    'name': 'Mozrog Skragbad',
-                    'weapons': {
-                        'melee': ["Big Chompa\'s Jaws", 'Gutrippa'],
-                        'ranged': ['Thump Gun']
-                    },
-                    'warlord': True
-                }
-            ],
-            'battleline': [],
-            'dedicated_transports': [],
-            'other_datasheets': [],
-        },
+            'detachment': '',
+            'army': {}
+        }
     }
-

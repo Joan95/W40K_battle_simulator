@@ -5,18 +5,24 @@ class DatabaseHandler:
     def __init__(self, db_path):
         self.database_path = db_path
 
-    def get_melee_weapon_by_name(self, melee_weapon_name):
+    def get_melee_weapon_by_name(self, melee_weapon_name, model_id):
         with sqlite3.connect(self.database_path) as conn:
             cursor = conn.cursor()
             cursor.execute(f'SELECT range_attack, attack, ballistic_skill, strength, armour_penetration, damage'
-                           f' FROM melee_weapons WHERE name = \"{melee_weapon_name}\"')
+                           f' FROM melee_weapons WHERE name = \"{melee_weapon_name}\" AND model_id = \"{model_id}\"')
             return cursor.fetchall()
 
-    def get_ranged_weapon_by_name(self, ranged_weapon_name):
+    def get_ranged_weapon_by_name(self, ranged_weapon_name, model_id):
         with sqlite3.connect(self.database_path) as conn:
             cursor = conn.cursor()
             cursor.execute(f'SELECT range_attack, attack, ballistic_skill, strength, armour_penetration, damage'
-                           f' FROM ranged_weapons WHERE name = \"{ranged_weapon_name}\"')
+                           f' FROM ranged_weapons WHERE name = \"{ranged_weapon_name}\" AND model_id = \"{model_id}\"')
+            return cursor.fetchall()
+
+    def get_model_id_by_name(self, model_name):
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(f'SELECT id FROM models WHERE name = \"{model_name}\"')
             return cursor.fetchall()
 
     def get_model_by_name(self, model_name):

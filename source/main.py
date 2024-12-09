@@ -1,6 +1,7 @@
 import os.path
 import random
-from map import Map, mapConfig1
+from battlefield import Battlefield, BoardHandle, Objective
+from shapely.geometry import Point
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
@@ -49,7 +50,7 @@ def load_players_army(random_player1=False, random_player2=False):
             player = players[random.randint(0, len(players) - 1)]
             player_2 = Player(database, player, players_cfg[player])
     else:
-        player = players[players.index('Victor')]
+        player = players[players.index('Warrià')]
         player_2 = Player(database, player, players_cfg[player],
                           database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
@@ -74,18 +75,14 @@ def players_handshake(board_map, player_1, player_2):
 
     if player_1.last_roll_dice > player_2.last_roll_dice:
         player_1.set_rol(PlayerRol.ATTACKER.value)
-        player_1.set_deployment_zone(board_map.map.attacker_zone)
-        board.set_attacker(player_1)
+        player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
         player_2.set_rol(PlayerRol.DEFENDER.value)
-        player_2.set_deployment_zone(board_map.map.defender_zone)
-        board.set_defender(player_2)
+        player_2.set_deployment_zone(board_map.map_configuration.defender_zone)
     else:
         player_1.set_rol(PlayerRol.DEFENDER.value)
-        player_1.set_deployment_zone(board_map.map.defender_zone)
-        board.set_defender(player_1)
+        player_1.set_deployment_zone(board_map.map_configuration.defender_zone)
         player_2.set_rol(PlayerRol.ATTACKER.value)
-        player_2.set_deployment_zone(board_map.map.attacker_zone)
-        board.set_attacker(player_2)
+        player_2.set_deployment_zone(board_map.map_configuration.attacker_zone)
 
 
 def initiatives(player_1, player_2):
@@ -117,44 +114,66 @@ def place_army_into_boardgame(turns):
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
         player = players[player_count % len(players)]
         if player.has_units_to_deploy():
-            player.place_unit()
+            player.deploy_unit()
         player_count += 1
 
 
-def command_phase(player):
-    for p in players_list:
-        p.increment_command_points()
+def command_phase(active_player, inactive_player):
+    # Calculate current army score
+    active_player.army.calculate_danger_score()
+    active_player.increment_command_points()
+    inactive_player.army.calculate_danger_score()
+    inactive_player.increment_command_points()
+
+    for unit in active_player.army.units:
+        if len(unit.models) < unit.unit_initial_force / 2:
+            print(f"Unit {unit.name} at half of its initial force, will have to trow the dices for checking its moral")
 
 
-def movement_phase(player):
-    for unit in player.army.units:
-        pass
+def movement_phase(active_player, inactive_player):
+    # Get enemy's alive units
+    enemy_units = inactive_player.get_alive_units()
+    # Force units to target enemies based on its score
+    active_player.army.target_enemies(enemy_units)
+    active_player.move_units()
+    active_player.board_map.display_board()
 
 
-def shooting_phase(player):
+def shooting_phase(active_player, inactive_player):
     pass
 
 
-def charge_phase(player):
+def charge_phase(active_player, inactive_player):
     pass
 
 
-def fight_phase(player):
+def fight_phase(active_player, inactive_player):
     pass
 
 
-def execute_phase(player):
+def execute_phase(active_player, inactive_player):
     for phase_sequence in phases:
         phase = phases[phase_sequence]
         phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
-        print(f"\t[{player.players_turn}] >> {player.name} {phase_name_enum}")
-        phase['phase_function'](player)
+        print(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}")
+        phase['phase_function'](active_player, inactive_player)
+
+
+mapConfig1 = BoardHandle(
+    name="Map 1",
+    wide=44,
+    large=60,
+    attacker_zone=[Point(0, 0), Point(17, 0), Point(17, 43), Point(0, 43)],     # Rectangle
+    defender_zone=[Point(42, 0), Point(59, 0), Point(59, 43), Point(42, 43)],   # Rectangle
+    objectives=[Objective(coord=(9, 21)), Objective(coord=(49, 21)), Objective(coord=(21, 9)),
+                Objective(coord=(37, 9)), Objective(coord=(21, 33)), Objective(coord=(37, 33))]
+)
 
 
 if __name__ == '__main__':
     try:
         print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
-        board = Map(mapConfig1)
+        board = Battlefield(mapConfig1)
         board.place_objectives()
 
         load_game_configuration()
@@ -175,6 +194,14 @@ if __name__ == '__main__':
         # Place all the army in the board
         place_army_into_boardgame(turn_list)
 
+        # If here all the Units have been displayed so the game can start!
+        board.start_the_game()
+
+        # Remove Attackers and defenders zone
+        board.remove_attacker_defender_zone()
+
+        board.display_board()
+
         print()
         for (game_turn, (attacker, defender)) in turn_list:
             print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}")
@@ -182,9 +209,9 @@ if __name__ == '__main__':
             defender.players_turn = game_turn
 
             # Execute Attacker phase
-            execute_phase(attacker)
+            execute_phase(attacker, defender)
             # Execute Defender phase
-            execute_phase(defender)
+            execute_phase(defender, attacker)
             print()
 
     except KeyboardInterrupt:
