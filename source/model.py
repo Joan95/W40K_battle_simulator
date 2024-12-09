@@ -45,19 +45,25 @@ class Model:
         return chance_of_defence
 
     def calculate_all_weapon_hit_probability_and_damage(self):
-        for weapon in self.weapons:
-            if weapon.type == WeaponType.RANGED.value:
-                self.ranged_attack_impact_probability += weapon.weapon_hit_probability
-                self.ranged_attack_potential_damage += weapon.weapon_potential_damage
-            elif weapon.type == WeaponType.MELEE.value:
-                self.melee_attack_impact_probability += weapon.weapon_hit_probability
-                self.melee_attack_potential_damage += weapon.weapon_potential_damage
-        self.ranged_attack_impact_probability /= len([x for x in self.weapons if x.type == WeaponType.RANGED.value])
-        self.melee_attack_impact_probability /= len([x for x in self.weapons if x.type == WeaponType.MELEE.value])
+        """Calculate the hit probability and potential damage for all weapons."""
+        ranged_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.value]
+        melee_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.MELEE.value]
+
+        for weapon in ranged_weapons:
+            self.ranged_attack_impact_probability += weapon.weapon_hit_probability
+            self.ranged_attack_potential_damage += weapon.weapon_potential_damage
+
+        for weapon in melee_weapons:
+            self.melee_attack_impact_probability += weapon.weapon_hit_probability
+            self.melee_attack_potential_damage += weapon.weapon_potential_damage
+
+        if ranged_weapons:
+            self.ranged_attack_impact_probability /= len(ranged_weapons)
+        if melee_weapons:
+            self.melee_attack_impact_probability /= len(melee_weapons)
 
     def calculate_model_danger_score(self):
         self.calculate_all_weapon_hit_probability_and_damage()
         # Attack score will be the average a model can deal counting both types of weapon melee and ranged
         self.model_potential_attack_damage = (self.melee_attack_potential_damage +
                                               self.ranged_attack_potential_damage) / 2
-

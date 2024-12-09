@@ -6,6 +6,18 @@ BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 
 
+def update_model_position(board_map, model, new_position):
+    """Update the model's position on the board."""
+    if model.position:
+        board_map.map_configuration.clear_model(model.position)
+    model.position = new_position
+    board_map.map_configuration.set_model(new_position, model)
+
+
+def is_position_occupied(board_map, position):
+    return not board_map.is_cell_empty(position)
+
+
 class Unit:
     def __init__(self, name, models):
         self.name = name
@@ -94,9 +106,6 @@ class Unit:
                 return True
         return False
 
-    def is_position_occupied(self, board_map, position):
-        return not board_map.is_cell_empty(position)
-
     def move_towards_target(self, board_map):
         if not self.targeted_enemy_unit_to_chase.is_destroyed:
             target_position = self.targeted_enemy_unit_to_chase.unit_centroid
@@ -119,14 +128,14 @@ class Unit:
 
                     new_position = board_map.clamp_position_within_boundaries(new_position)
 
-                    if not self.is_within_engagement_range(new_position) and not self.is_position_occupied(board_map,
+                    if not self.is_within_engagement_range(new_position) and not is_position_occupied(board_map,
                                                                                                            new_position):
-                        self.update_model_position(board_map, model, new_position)
+                        update_model_position(board_map, model, new_position)
                     else:
                         # Find nearest free position if the current one is occupied or within engagement range
                         nearest_free_position = self.find_nearest_free_position(board_map, new_position)
                         if nearest_free_position:
-                            self.update_model_position(board_map, model, nearest_free_position)
+                            update_model_position(board_map, model, nearest_free_position)
 
             self.get_unit_centroid()
         else:
@@ -139,7 +148,7 @@ class Unit:
         queue = deque([position])
         while queue:
             current_position = queue.popleft()
-            if not self.is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
+            if not is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
                     current_position):
                 return current_position
             visited.add(current_position)
@@ -148,11 +157,6 @@ class Unit:
                 if point not in visited and 0 <= point.x < board_map.map_configuration.wide and 0 <= point.y < board_map.map_configuration.large:
                     queue.append(point)
         return None
-
-    def update_model_position(self, board_map, model, new_position):
-        board_map.map_configuration.clear_model(model.position)
-        model.position = new_position
-        board_map.map_configuration.set_model(new_position, model)
 
     def set_target(self, enemy_unit):
         self.targeted_enemy_unit_to_chase = enemy_unit

@@ -48,10 +48,7 @@ class BoardHandle:
 
     def is_cell_empty(self, coord):
         x, y = int(coord.x), int(coord.y)
-        if self.boardgame[y][x] != ' ' and self.boardgame[y][x] != 'A' and self.boardgame[y][x] != 'D':
-            return False
-        else:
-            return True
+        return self.boardgame[y][x] in (' ', 'A', 'D')
 
 
 def get_random_point_in_zone(zone):

@@ -1,6 +1,6 @@
 import os.path
-import random
 from battlefield import Battlefield, BoardHandle, Objective
+from logging_handler import *
 from shapely.geometry import Point
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
@@ -28,31 +28,17 @@ def load_game_configuration():
     phases[GamePhase.FIGHT_PHASE.value]['phase_function'] = fight_phase
 
 
-def load_players_army(random_player1=False, random_player2=False):
+def load_players_army(player_1_name, player_2_name):
     global players_list
-
     players = list(players_cfg.keys())
-    if random_player1:
-        player_1 = None
-        player = players[players.index('default')]
-        while player == 'default':
-            player = players[random.randint(0, len(players) - 1)]
-            player_1 = Player(database, player, players_cfg[player])
-    else:
-        player = players[players.index('Shuan')]
-        player_1 = Player(database, player, players_cfg[player],
-                          database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
-    if random_player2:
-        player_2 = None
-        player = players[players.index('default')]
-        while player == 'default':
-            player = players[random.randint(0, len(players) - 1)]
-            player_2 = Player(database, player, players_cfg[player])
-    else:
-        player = players[players.index('Warrià')]
-        player_2 = Player(database, player, players_cfg[player],
-                          database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+    player = players[players.index(player_1_name)]
+    player_1 = Player(database, player, players_cfg[player],
+                      database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+
+    player = players[players.index(player_2_name)]
+    player_2 = Player(database, player, players_cfg[player],
+                      database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
 
     players_list.append(player_1)
     players_list.append(player_2)
@@ -61,15 +47,15 @@ def load_players_army(random_player1=False, random_player2=False):
 
 
 def players_handshake(board_map, player_1, player_2):
-    player_1.set_up_the_map(board_map)
-    player_2.set_up_the_map(board_map)
+    player_1.set_battlefield(board_map)
+    player_2.set_battlefield(board_map)
     # Roll for set up the attacker and the defender
-    print("[>>] - Rolling dices for setting up the attacker and the defender...")
+    log("[>>] - Setting up the attacker and the defender")
     player_1.roll_players_dice()
     player_2.roll_players_dice()
 
     while player_1.last_roll_dice == player_2.last_roll_dice:
-        print("[ *] - And it's been a DRAW! Re-rolling dices")
+        log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
@@ -86,20 +72,20 @@ def players_handshake(board_map, player_1, player_2):
 
 
 def initiatives(player_1, player_2):
-    print("[>>] - Rolling dices for deciding initiatives...")
+    log("[>>] - Rolling dices for deciding initiatives")
     player_1.roll_players_dice()
     player_2.roll_players_dice()
 
     while player_1.last_roll_dice == player_2.last_roll_dice:
-        print("[ *] - And it's been a DRAW! Re-rolling dices")
+        log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
     if player_1.last_roll_dice > player_2.last_roll_dice:
-        print(f"\t{player_1.name} will go first!")
+        log(f"\t{player_1.name} will go first!", True)
         players_turn = (player_1, player_2)
     else:
-        print(f"\t{player_2.name} will go first!")
+        log(f"\t{player_2.name} will go first!", True)
         players_turn = (player_2, player_1)
 
     turns = list()
@@ -127,7 +113,8 @@ def command_phase(active_player, inactive_player):
 
     for unit in active_player.army.units:
         if len(unit.models) < unit.unit_initial_force / 2:
-            print(f"Unit {unit.name} at half of its initial force, will have to trow the dices for checking its moral")
+            log(f"Unit {unit.name} at half of its initial force, will have to throw the dices for checking its moral",
+                True)
 
 
 def movement_phase(active_player, inactive_player):
@@ -136,7 +123,7 @@ def movement_phase(active_player, inactive_player):
     # Force units to target enemies based on its score
     active_player.army.target_enemies(enemy_units)
     active_player.move_units()
-    active_player.board_map.display_board()
+    active_player.battlefield.display_board()
 
 
 def shooting_phase(active_player, inactive_player):
@@ -155,7 +142,7 @@ def execute_phase(active_player, inactive_player):
     for phase_sequence in phases:
         phase = phases[phase_sequence]
         phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
-        print(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}")
+        log(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}", True)
         phase['phase_function'](active_player, inactive_player)
 
 
@@ -172,14 +159,15 @@ mapConfig1 = BoardHandle(
 
 if __name__ == '__main__':
     try:
-        print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
+        log("----- ----- ----- ----- ----- STARTING A NEW GAME ----- ----- ----- ----- -----")
+        log("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!", True)
         board = Battlefield(mapConfig1)
         board.place_objectives()
 
         load_game_configuration()
 
         # Army selection: will assign
-        p1, p2 = load_players_army(random_player1=False, random_player2=False)
+        p1, p2 = load_players_army("Shuan", "Warrià")
 
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender
@@ -204,7 +192,7 @@ if __name__ == '__main__':
 
         print()
         for (game_turn, (attacker, defender)) in turn_list:
-            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}")
+            log(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}", True)
             attacker.players_turn = game_turn
             defender.players_turn = game_turn
 

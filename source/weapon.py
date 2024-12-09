@@ -26,19 +26,14 @@ class Weapon:
         return self.weapon_hit_probability * self.get_weapon_num_attacks() * self.get_weapon_damage()
 
     def get_weapon_num_attacks(self):
+        """Retrieve the number of attacks for the weapon."""
         attacks = self.num_attacks
         try:
             return int(attacks)
         except ValueError:
             # It's a D or +something in the num_attacks characteristic
-            if '+' in attacks:
-                base, extra = attacks.split('+')
-                extra = int(extra)
-            else:
-                base = attacks
-                extra = 0
-
-            return round(int(base.replace('D', '')) / 2) + extra
+            base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
+            return round(int(base.replace('D', '')) / 2) + int(extra)
 
     def get_weapon_damage(self):
         return int(self.damage)
