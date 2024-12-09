@@ -1,6 +1,6 @@
 import os.path
 import random
-from map import MainBoardMap, BoardHandle, Objective
+from battlefield import Battlefield, BoardHandle, Objective
 from shapely.geometry import Point
 from colorama import init, Fore
 from enums import GamePhase, PlayerRol
@@ -173,7 +173,7 @@ mapConfig1 = BoardHandle(
 if __name__ == '__main__':
     try:
         print("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!")
-        board = MainBoardMap(mapConfig1)
+        board = Battlefield(mapConfig1)
         board.place_objectives()
 
         load_game_configuration()

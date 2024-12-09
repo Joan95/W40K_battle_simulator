@@ -1,5 +1,4 @@
-from colorama import Fore
-from map import *
+from battlefield import *
 from shapely.geometry import Polygon, Point
 
 # Constants for bold text

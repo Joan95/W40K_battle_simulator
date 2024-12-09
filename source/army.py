@@ -31,14 +31,6 @@ class Army:
                 if not unit.has_been_deployed:
                     return unit
 
-    def move_units(self, position):
-        for unit in self.units:
-            if not unit.is_destroyed:
-                unit.move_towards_target()
-
-    def set_warlord(self, warlord):
-        self.warlord = warlord
-
     def target_enemies(self, enemy_units):
         for unit in self.units:
             if not unit.is_destroyed and enemy_units:

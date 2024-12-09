@@ -74,7 +74,7 @@ def get_adjacent_points(coord, distance=1):
     return adjacent_points
 
 
-class MainBoardMap:
+class Battlefield:
     def __init__(self, configuration):
         self.map_configuration = configuration
         self.objectives = configuration.objectives
