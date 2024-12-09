@@ -6,8 +6,11 @@ class RemoveAnsiEscapeCodesFilter(logging.Filter):
     ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
 
     def filter(self, record):
-        record.msg = self.ansi_escape.sub('', record.msg)
-        return True
+        try:
+            record.msg = self.ansi_escape.sub('', record.msg)
+            return True
+        except TypeError:
+            pass
 
 
 # Initialize logging to a file

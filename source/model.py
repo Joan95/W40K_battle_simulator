@@ -1,4 +1,5 @@
 from enums import WeaponType
+from logging_handler import *
 
 MAX_THROW_D6 = 6
 
@@ -34,9 +35,7 @@ class Model:
         self.model_potential_salvation = self.calculate_model_defence_score()
         # Calculate its score
         self.calculate_model_danger_score()
-
-    def move(self):
-        print(f"{self.name} moving!")
+        self.description = self.set_description()
 
     def calculate_model_defence_score(self):
         chance_of_defence = (MAX_THROW_D6 - (int(self.salvation) - 1)) / 6
@@ -67,3 +66,24 @@ class Model:
         # Attack score will be the average a model can deal counting both types of weapon melee and ranged
         self.model_potential_attack_damage = (self.melee_attack_potential_damage +
                                               self.ranged_attack_potential_damage) / 2
+
+    def get_description(self):
+        return self.description
+
+    def move(self):
+        print(f"{self.name} moving!")
+
+    def set_description(self):
+        description = f'\n----- ----- ----- ----- ----- ----- ----- ----- -----\n'
+        description += f'\t[{self.name.upper()}]\n'
+        description += f'\tM\tT\tSV\tW\tLD\tOC\n'
+        description += f'\t{self.movement}\t{self.toughness}\t{self.salvation}\t{self.wounds}\t{self.leadership}\t' \
+                       f'{self.objective_control}\n'
+        if self.invulnerable_save:
+            description += f'\tINVULNERABLE SAVE\t\t{self.invulnerable_save}\n'
+        description += f'\tKEYWORRDS:\n'
+        description += f'\t{", ".join([keyword for keyword in self.keywords])}\n'
+        for weapon in self.weapons:
+            description += f'{weapon.get_description()}\n'
+        log(description)
+        return description

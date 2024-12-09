@@ -1,7 +1,7 @@
 import random
 from army import Army
 from colorama import Fore
-from enums import PlayerRol
+from enums import PlayerRol, WeaponType
 from logging_handler import *
 from model import Model
 from unit import Unit
@@ -78,6 +78,7 @@ class Player:
 
     def load_army(self, army_cfg):
         """Load the player's army based on the provided configuration."""
+        log(f'Loading army from player {self.name}')
         if not army_cfg:
             log(f"{self.name} has no army configuration provided.")
             return
@@ -90,14 +91,11 @@ class Player:
         is_warlord = 'warlord' in models_cfg
         amount = models_cfg.get('amount', 1)
         models_list = []
-        try:
-            model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
-            for _ in range(amount):
-                models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'], is_warlord))
-            return models_list
-        except IndexError:
-            log(f"Model {models_cfg['name']} not found in the database!")
-            raise IndexError
+        model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
+        for _ in range(amount):
+            models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
+                                               is_warlord))
+        return models_list
 
     def load_model(self, model_name, model_attributes, model_weapons_cfg, is_warlord=False):
         """Load a single model with its attributes and weapons."""
@@ -105,13 +103,19 @@ class Player:
         for weapon_type, weapon_list_cfg in model_weapons_cfg.items():
             for weapon_name in weapon_list_cfg:
                 try:
-                    weapon_cls = MeleeWeapon if weapon_type == "melee" else RangedWeapon
-                    weapon_data = self.database.get_melee_weapon_by_name(
-                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
-                    )[0] if weapon_type == "melee" else self.database.get_ranged_weapon_by_name(
-                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
-                    )[0]
-                    weapon_list.append(weapon_cls(weapon_name, weapon_data))
+                    model_id = self.database.get_model_id_by_name(model_name)[0][0]
+                    if weapon_type == WeaponType.MELEE.name:
+                        weapon_cls = MeleeWeapon
+                        weapon_data = self.database.get_melee_weapon_by_name(weapon_name, model_id)[0]
+                        try:
+                            weapon_abilities = self.database.get_weapon_abilities(weapon_name, WeaponType.MELEE)[0]
+                        except IndexError:
+                            log(f'Weapon {weapon_name} has no abilities')
+                    else:
+                        weapon_cls = RangedWeapon
+                        weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
+                        weapon_abilities = self.database.get_weapon_abilities(weapon_name, WeaponType.RANGED)[0]
+                    weapon_list.append(weapon_cls(weapon_name, weapon_data, weapon_abilities))
                 except IndexError:
                     log(f"Weapon {weapon_name} not found in the database!")
                     raise IndexError

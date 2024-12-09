@@ -19,6 +19,32 @@ class DatabaseHandler:
                            f' FROM ranged_weapons WHERE name = \"{ranged_weapon_name}\" AND model_id = \"{model_id}\"')
             return cursor.fetchall()
 
+    def get_weapon_abilities(self, weapon_name, weapon_type):
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
+
+            if weapon_type.name == 'MELEE':
+                query = '''
+                SELECT abilities.name AS ability_name 
+                FROM abilities 
+                JOIN melee_weapon_abilities mwa ON abilities.id = mwa.ability_id 
+                JOIN melee_weapons mw ON mwa.melee_weapon_id = mw.id 
+                WHERE mw.name = ? 
+                '''
+            elif weapon_type.name == 'RANGED':
+                query = '''
+                SELECT abilities.name AS ability_name 
+                FROM abilities 
+                JOIN ranged_weapon_abilities rwa ON abilities.id = rwa.ability_id 
+                JOIN ranged_weapons rw ON rwa.ranged_weapon_id = rw.id 
+                WHERE rw.name = ? 
+                '''
+            else:
+                raise ValueError
+
+            cursor.execute(query, (weapon_name,))
+            return cursor.fetchall()
+
     def get_model_id_by_name(self, model_name):
         with sqlite3.connect(self.database_path) as conn:
             cursor = conn.cursor()
