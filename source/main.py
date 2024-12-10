@@ -51,8 +51,8 @@ def players_handshake(board_map, player_1, player_2):
     player_2.set_battlefield(board_map)
     # Roll for set up the attacker and the defender
     log("[>>] - Setting up the attacker and the defender")
-    player_1.roll_players_dice()
-    player_2.roll_players_dice()
+    player_1.roll_players_dice(number_of_dices=1, sides=6)
+    player_2.roll_players_dice(number_of_dices=1, sides=6)
 
     while player_1.last_roll_dice == player_2.last_roll_dice:
         log("[ *] - And it's been a DRAW! Re-rolling dices")
@@ -105,21 +105,25 @@ def place_army_into_boardgame(turns):
 
 
 def command_phase(active_player, inactive_player):
-    # Calculate current army score
+    # Calculate current army score for both players
     active_player.army.calculate_danger_score()
-    active_player.increment_command_points()
     inactive_player.army.calculate_danger_score()
+
+    # Now increase command points for each one
+    active_player.increment_command_points()
     inactive_player.increment_command_points()
 
-    for unit in active_player.army.units:
+    for unit in active_player.get_units_alive():
         if len(unit.models) < unit.unit_initial_force / 2:
             log(f"Unit {unit.name} at half of its initial force, will have to throw the dices for checking its moral",
                 True)
+            active_player.roll_dice()
+            unit.do_moral_check(active_player.last_roll_dice)
 
 
 def movement_phase(active_player, inactive_player):
     # Get enemy's alive units
-    enemy_units = inactive_player.get_alive_units()
+    enemy_units = inactive_player.get_units_alive()
     # Force units to target enemies based on its score
     active_player.army.target_enemies(enemy_units)
     active_player.move_units()
@@ -127,7 +131,12 @@ def movement_phase(active_player, inactive_player):
 
 
 def shooting_phase(active_player, inactive_player):
-    pass
+    for unit in active_player.get_units_alive():
+        if not unit.is_engaged:
+            # It can shoot, otherwise unit is still under melee combat
+            # Check whether it can reach targeted unit, otherwise it may need to scan for nearest enemies
+
+            pass
 
 
 def charge_phase(active_player, inactive_player):

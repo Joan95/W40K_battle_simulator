@@ -16,11 +16,17 @@ class Army:
         return self.check_units_left_to_deploy() > 0
 
     def calculate_danger_score(self):
-        self.army_total_score = sum(unit.unit_total_score for unit in self.units if not unit.is_destroyed)
+        self.army_total_score = 0
+        for unit in self.get_units_alive():
+            unit.update_unit_total_score()
+            self.army_total_score += unit.unit_total_score
 
     def check_units_left_to_deploy(self):
         """Check and count units left to be deployed."""
         return sum(1 for unit in self.units if not unit.has_been_deployed)
+
+    def get_units_alive(self):
+        return [unit for unit in self.units if not unit.is_destroyed]
 
     def get_unit_to_place(self):
         if self.check_units_left_to_deploy() > 0:

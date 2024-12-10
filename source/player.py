@@ -45,7 +45,8 @@ class Player:
         self.detachment = None
         self.rol = None
         self.deployment_zone = None
-        self.last_roll_dice = None
+        self.last_roll_number_of_dices = 0
+        self.last_roll_dice_values = 0
         self.command_points = 0
         self.players_turn = 0
 
@@ -63,9 +64,9 @@ class Player:
         else:
             log(f"{self.name} has no units left to deploy!")
 
-    def get_alive_units(self):
+    def get_units_alive(self):
         """Return a list of alive units."""
-        return [unit for unit in self.army.units if not unit.is_destroyed]
+        return self.army.get_units_alive()
 
     def has_units_to_deploy(self):
         """Check if there are units left to deploy."""
@@ -142,17 +143,25 @@ class Player:
 
     def move_units(self):
         """Move units towards their targets."""
-        for unit in self.get_alive_units():
+        for unit in self.get_units_alive():
             log(f"Moving {unit.name}")
             unit.move_towards_target(self.battlefield)
 
-    def roll_players_dice(self, sides=6, show_throw=True):
+    def roll_players_dice(self, number_of_dices=1, sides=6, show_throw=True):
         """Roll a dice and display the result."""
-        self.last_roll_dice = random.randint(1, sides)
+        self.last_roll_number_of_dices = number_of_dices
+        self.last_roll_dice_values = list()
+        for _ in range(self.last_roll_number_of_dices):
+            self.last_roll_dice_values.append(random.randint(1, sides))
+
         if show_throw:
-            adjective = random.choice(six_roll_dice_adjectives).upper() + " " if self.last_roll_dice == 6 else ""
-            log(f"{self.name} rolled a {adjective}{self.user_color}{self.last_roll_dice}{Fore.RESET}", show_throw)
-        return self.last_roll_dice
+            log_text = f'{self.name} rolled #{self.last_roll_number_of_dices} dice(s) getting: '
+
+            for dice in self.last_roll_dice_values:
+                adjective = random.choice(six_roll_dice_adjectives).upper() + " " if dice == 6 else ""
+                log_text += f"{adjective}{self.user_color}{dice}{Fore.RESET}"
+            log(log_text, show_throw)
+        return self.last_roll_dice_values
 
     def set_battlefield(self, board_map):
         """Set the player's board map."""

@@ -49,8 +49,8 @@ class Model:
 
     def calculate_all_weapon_hit_probability_and_damage(self):
         """Calculate the hit probability and potential damage for all weapons."""
-        ranged_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.value]
-        melee_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.MELEE.value]
+        ranged_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
+        melee_weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.MELEE.name]
 
         for weapon in ranged_weapons:
             self.ranged_attack_impact_probability += weapon.weapon_hit_probability

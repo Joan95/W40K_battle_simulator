@@ -23,7 +23,8 @@ class Unit:
     def __init__(self, name, models):
         self.name = name
         self.models = models
-        self.is_warlord_in_the_unit = self.check_warlord_in_unit()
+        self.is_warlord_in_the_unit = self.check_if_warlord_in_unit()
+        self.moral_check_passed = True
         self.is_destroyed = False
         self.is_engaged = False
         self.is_unit_visible = self.check_unit_visibility()
@@ -44,8 +45,51 @@ class Unit:
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.name} (WL){BOLD_OFF}'
 
-    def check_warlord_in_unit(self):
+    def calculate_unit_potential_attack_damage(self):
+        self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
+
+    def calculate_salvation_chance(self):
+        self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.models if model.is_alive)
+
+    def calculate_unit_leadership(self):
+        self.unit_leadership = sum(model.leadership for model in self.models if model.is_alive) / len(self.models)
+
+    def calculate_unit_objective_control(self):
+        # Unit only has some objective control if it has passed the moral check, performed when unit current
+        # members are lower than half of its initial force
+        self.unit_objective_control = sum(model.objective_control for model in self.models if model.is_alive and
+                                          self.moral_check_passed)
+
+    def calculate_unit_survivability(self):
+        self.unit_survivability = sum(model.wounds * model.model_potential_salvation for model in self.models
+                                      if model.is_alive)
+
+    def check_if_warlord_in_unit(self):
         return any(model.is_warlord for model in self.models)
+
+    def check_unit_visibility(self):
+        is_visible = True in [model.is_visible for model in self.models]
+        return is_visible
+
+    def deploy_unit_in_zone(self, board, zone_to_deploy):
+        board.place_unit(zone_to_deploy, self)
+        self.has_been_deployed = True
+        # Now that unit has been deployed, calculate its polygon
+        self.get_unit_centroid()
+
+    def do_moral_check(self, value):
+        pass
+
+    def form_unit_polygon(self):
+        # Creates unit's polygon from models position
+        model_coordinates = [model.position for model in self.models if model.is_alive]
+        if len(model_coordinates) == 1:
+            # There is only 1 model in the unit, return its position
+            self.unit_polygon = Point(model_coordinates[0])
+        elif model_coordinates:
+            self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
+        else:
+            self.unit_polygon = None
 
     def get_unit_centroid(self):
         # Get the centroid of the unit's polygon or the position of the single model
@@ -58,43 +102,6 @@ class Unit:
             self.unit_centroid = polygon_or_point
         else:
             self.unit_centroid = None
-
-    def calculate_unit_potential_attack_damage(self):
-        self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
-
-    def calculate_salvation_chance(self):
-        self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.models if model.is_alive)
-
-    def calculate_unit_leadership(self):
-        self.unit_leadership = sum(model.leadership for model in self.models if model.is_alive) / len(self.models)
-
-    def calculate_unit_objective_control(self):
-        self.unit_objective_control = sum(model.objective_control for model in self.models if model.is_alive)
-
-    def calculate_unit_survivability(self):
-        self.unit_survivability = sum(model.wounds * model.model_potential_salvation for model in self.models
-                                      if model.is_alive)
-
-    def check_unit_visibility(self):
-        is_visible = True in [model.is_visible for model in self.models]
-        return is_visible
-
-    def deploy_unit_in_zone(self, board, zone_to_deploy):
-        board.place_unit(zone_to_deploy, self)
-        self.has_been_deployed = True
-        # Now that unit has been deployed, calculate its polygon
-        self.get_unit_centroid()
-
-    def form_unit_polygon(self):
-        # Creates unit's polygon from models position
-        model_coordinates = [model.position for model in self.models if model.is_alive]
-        if len(model_coordinates) == 1:
-            # There is only 1 model in the unit, return its position
-            self.unit_polygon = Point(model_coordinates[0])
-        elif model_coordinates:
-            self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
-        else:
-            self.unit_polygon = None
 
     def get_unit_movement(self):
         return int(self.models[0].movement.replace('"', ''))
