@@ -54,23 +54,12 @@ class Unit:
             log(f'\tUnit {self.name} retrieving allocatable shots for shooting phase ')
             # First check whether targeted enemy is reachable
             for model in self.get_models_alive():
-                if model.name not in allocatable_shots:
-                    allocatable_shots[model.name] = dict()
-                    allocatable_shots[model.name]['count'] = 1
-                    allocatable_shots[model.name]['model'] = model
-                    allocatable_shots[model.name]['weapons'] = dict()
-                else:
-                    allocatable_shots[model.name]['count'] += 1
+                allocatable_shots[model] = dict()
 
                 # Get model's weapon, they can be different between same models we will need to do so each time
                 for weapon in model.get_ranged_weapons():
-                    if weapon.name not in allocatable_shots[model.name]['weapons']:
-                        allocatable_shots[model.name]['weapons'][weapon.name] = dict()
-                        allocatable_shots[model.name]['weapons'][weapon.name]['count'] = 1
-                        allocatable_shots[model.name]['weapons'][weapon.name]['weapon'] = weapon
-                        allocatable_shots[model.name]['weapons'][weapon.name]['attack_range'] = weapon.get_weapon_range_attack()
-                    else:
-                        allocatable_shots[model.name]['weapons'][weapon.name]['count'] += 1
+                    allocatable_shots[model][weapon] = dict()
+                    allocatable_shots[model][weapon]['enemy_to_shot'] = None
         else:
             log(f'\tUnit {self.name} is engaged, skipping shooting phase')
         return allocatable_shots

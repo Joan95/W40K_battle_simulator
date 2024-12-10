@@ -1,5 +1,6 @@
 import random
 from army import Army
+from battlefield import get_distance_between_two_points
 from colorama import Fore
 from enums import PlayerRol, WeaponType
 from logging_handler import *
@@ -57,10 +58,29 @@ class Player:
 
     def allocate_players_ranged_attacks(self, enemy_units):
         log(f'{self.name} allocating ranged attacks for all the army')
-        self.army.get_allocatable_army_ranged_attacks()
-        # For each allocatable ranged attack check whether it can be placed to unit's targeted enemy, otherwise
-        # we might want to change the target for that concrete attack
-        pass
+        # Firs of all get all the allocatable ranged attacks from our army
+        allocatable_ranged_attacks = self.army.get_allocatable_army_ranged_attacks()
+        # For each allocatable ranged attack perform by unit we need to check whether it can be placed to
+        # unit's targeted enemy, otherwise we might want to change the target for that concrete attack in order to
+        # not lose the range attack for that current phase
+
+        for unit in allocatable_ranged_attacks:
+            for model in allocatable_ranged_attacks[unit]:
+                for weapon in allocatable_ranged_attacks[unit][model]:
+                    if not allocatable_ranged_attacks[unit][model][weapon]['enemy_to_shot']:
+                        # There is no target, let's see if we reach our main target
+                        for enemy_model in unit.targeted_enemy_unit_to_chase.get_models_alive():
+                            distance_to_enemy = get_distance_between_two_points(model.position, enemy_model.position)
+                            if weapon.get_weapon_range_attack() >= distance_to_enemy:
+                                # The enemy is reachable!
+                                allocatable_ranged_attacks[unit][model][weapon]['enemy_to_shot'] = \
+                                    unit.targeted_enemy_unit_to_chase
+                                log(f'Enemy reachable! '
+                                    f'Model {model.name} [{model.position}] can shoot {weapon.name} '
+                                    f'[{weapon.range_attack}] to enemy {enemy_model.name} [{enemy_model.position}]. '
+                                    f'Distance to enemy {distance_to_enemy}"')
+                                break
+                        pass
 
     def deploy_units(self):
         """Deploy a unit into the player's zone."""

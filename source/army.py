@@ -33,8 +33,9 @@ class Army:
         army_allocatable_ranged_attacks = dict()
         # Only alive units can shoot
         for unit in self.get_units_alive():
-            army_allocatable_ranged_attacks[unit.raw_name] = dict()
-            army_allocatable_ranged_attacks[unit.raw_name] = unit.get_all_unit_ranged_attacks()
+            army_allocatable_ranged_attacks[unit] = dict()
+            army_allocatable_ranged_attacks[unit] = unit.get_all_unit_ranged_attacks()
+
         return army_allocatable_ranged_attacks
 
     def get_units_alive(self):

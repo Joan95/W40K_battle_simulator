@@ -32,16 +32,14 @@ def load_players_army(player_1_name, player_2_name):
     global players_list
     players = list(players_cfg.keys())
 
-    player = players[players.index(player_1_name)]
-    player_1 = Player(database, player, players_cfg[player],
-                      database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+    def create_player(player_name):
+        return Player(database, player_name, players_cfg[player_name],
+                      database.get_faction_by_name(players_cfg[player_name]['faction'])[0][1])
 
-    player = players[players.index(player_2_name)]
-    player_2 = Player(database, player, players_cfg[player],
-                      database.get_faction_by_name(players_cfg[player]['faction'])[0][1])
+    player_1 = create_player(player_1_name)
+    player_2 = create_player(player_2_name)
 
-    players_list.append(player_1)
-    players_list.append(player_2)
+    players_list.extend([player_1, player_2])
 
     return player_1, player_2
 
@@ -135,6 +133,7 @@ def shooting_phase(active_player, inactive_player):
     active_player.allocate_players_ranged_attacks(enemy_units)
 
     # Once attacks have been allocated shot everything
+    pass
 
 
 def charge_phase(active_player, inactive_player):
