@@ -1,10 +1,12 @@
 import random
 from colorama import Fore
+from logging_handler import log
+from model import Model
 from shapely.geometry import Point, Polygon
 
 # Constants for bold text
-bold_on = "\033[1m"
-bold_off = "\033[0m"
+BOLD_ON = "\033[1m"
+BOLD_OFF = "\033[0m"
 
 board_configurations = list()
 
@@ -29,22 +31,34 @@ class BoardHandle:
         self.objectives = objectives
 
     def set_objective(self, coord):
-        self.boardgame[int(coord.y)][int(coord.x)] = f'{Fore.YELLOW}{bold_on}OB{Fore.RESET}{bold_off}'
+        self.boardgame[int(coord.y)][int(coord.x)] = f'{Fore.YELLOW}{BOLD_ON}OB{Fore.RESET}{BOLD_OFF}'
 
     def set_model(self, coord, model):
-        self.boardgame[int(coord.y)][int(coord.x)] = f'{bold_on}{model.name[0:2]}{bold_off}'
+        self.boardgame[int(coord.y)][int(coord.x)] = model
         model.position = coord
         model.is_alive = True
+        log(f'Model {model.name} set at position {model.position}')
 
     def clear_model(self, coord):
         self.boardgame[int(coord.y)][int(coord.x)] = "  "
 
     def display_board_game(self):
         # Print configuration for seeing how the map looks like
-        print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+        print(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}")
         for count, row in enumerate(self.boardgame, start=0):
-            print(f"\t{'{:02}'.format(count)}|{' '.join(f'{str(cell):2}' for cell in row)}|")
-        print(f"\t   {' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+            row_to_print = f"\t{'{:02}'.format(count)}|"
+            for cell in row:
+                if type(cell) == str:
+                    row_to_print += f' {str(cell):2}'
+                elif type(cell) == Model:
+                    if 'EPIC HERO' in cell.keywords:
+                        row_to_print += f' {Fore.LIGHTMAGENTA_EX}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
+                    elif 'CHARACTER' in cell.keywords:
+                        row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
+                    else:
+                        row_to_print += f' {cell.name[:2]}'
+            print(f"{row_to_print}|")
+        print(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}")
 
     def is_cell_empty(self, coord):
         x, y = int(coord.x), int(coord.y)

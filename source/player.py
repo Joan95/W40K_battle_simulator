@@ -91,7 +91,11 @@ class Player:
         is_warlord = 'warlord' in models_cfg
         amount = models_cfg.get('amount', 1)
         models_list = []
-        model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
+        try:
+            model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
+        except IndexError:
+            log(f'Model [{models_cfg["name"]}] has not been found in Data Base')
+            raise IndexError
         for _ in range(amount):
             models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
                                                is_warlord))
@@ -99,26 +103,8 @@ class Player:
 
     def load_model(self, model_name, model_attributes, model_weapons_cfg, is_warlord=False):
         """Load a single model with its attributes and weapons."""
-        weapon_list = []
-        for weapon_type, weapon_list_cfg in model_weapons_cfg.items():
-            for weapon_name in weapon_list_cfg:
-                try:
-                    model_id = self.database.get_model_id_by_name(model_name)[0][0]
-                    if weapon_type == WeaponType.MELEE.name:
-                        weapon_cls = MeleeWeapon
-                        weapon_data = self.database.get_melee_weapon_by_name(weapon_name, model_id)[0]
-                        try:
-                            weapon_abilities = self.database.get_weapon_abilities(weapon_name, WeaponType.MELEE)[0]
-                        except IndexError:
-                            log(f'Weapon {weapon_name} has no abilities')
-                    else:
-                        weapon_cls = RangedWeapon
-                        weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
-                        weapon_abilities = self.database.get_weapon_abilities(weapon_name, WeaponType.RANGED)[0]
-                    weapon_list.append(weapon_cls(weapon_name, weapon_data, weapon_abilities))
-                except IndexError:
-                    log(f"Weapon {weapon_name} not found in the database!")
-                    raise IndexError
+        model_id = self.database.get_model_id_by_name(model_name)[0][0]
+        weapon_list = self.load_weapons(model_name, model_id, model_weapons_cfg)
         model_keywords = self.database.get_model_keywords(model_name)
         return Model(model_name, model_attributes, weapon_list, model_keywords, is_warlord)
 
@@ -128,6 +114,26 @@ class Player:
         if models_list:
             tmp_unit = Unit(unit_cfg['unit_name'], models_list)
             self.army.add_unit_into_army(tmp_unit)
+
+    def load_weapons(self, model_name, model_id, model_weapons_cfg):
+        weapon_list = []
+        for weapon_type, weapon_list_cfg in model_weapons_cfg.items():
+            for weapon_name in weapon_list_cfg:
+                weapon_abilities = None
+                if weapon_type == WeaponType.MELEE.name:
+                    weapon_cls = MeleeWeapon
+                    weapon_data = self.database.get_melee_weapon_by_name(weapon_name, model_id)[0]
+                    try:
+                        weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name,
+                                                                              WeaponType.MELEE)
+                    except IndexError:
+                        log(f'Weapon {weapon_name} has no abilities')
+                else:
+                    weapon_cls = RangedWeapon
+                    weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
+                    weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name, WeaponType.RANGED)
+                weapon_list.append(weapon_cls(weapon_name, weapon_data, weapon_abilities))
+        return weapon_list
 
     def make_announcement(self):
         """Announce the player's faction and detachment."""

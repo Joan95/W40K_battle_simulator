@@ -14,7 +14,7 @@ class RemoveAnsiEscapeCodesFilter(logging.Filter):
 
 
 # Initialize logging to a file
-logging.basicConfig(filename='game.log', level=logging.INFO,
+logging.basicConfig(filename='logs\\game.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Create and add the filter

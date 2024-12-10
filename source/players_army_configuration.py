@@ -107,26 +107,34 @@ players_army_configuration = \
                             },
                             {
                                 'name': 'Boy',
-                                'amount': 8,
+                                'amount': 4,
                                 'weapons': {
                                     'RANGED': ['Slugga'],
                                     'MELEE': ['Choppa']
                                 },
                             },
                             {
-                                'name': 'Beast Snagga Boy',
-                                'amount': 1,
+                                'name': 'Boy',
+                                'amount': 4,
                                 'weapons': {
-                                    'RANGED': ['Thump gun'],
+                                    'RANGED': ['Shoota'],
                                     'MELEE': ['Close combat weapon']
                                 },
                             },
                             {
-                                'name': 'Beast Snagga Nob',
+                                'name': 'Boy',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Rokkit launcha'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boss Nob',
                                 'amount': 1,
                                 'weapons': {
                                     'RANGED': ['Slugga'],
-                                    'MELEE': ['Power snappa']
+                                    'MELEE': ['Power klaw']
                                 },
                             },
                         ]

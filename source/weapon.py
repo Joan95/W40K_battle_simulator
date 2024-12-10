@@ -61,8 +61,8 @@ class MeleeWeapon(Weapon):
     def __init__(self, name, attributes_tuple, weapon_abilities):
         super().__init__(name, attributes_tuple)
         self.type = WeaponType.MELEE.name
-        self.description = self.set_description()
         self.abilities = set_abilities(weapon_abilities)
+        self.description = self.set_description()
 
     def attack(self):
         pass
@@ -73,8 +73,9 @@ class MeleeWeapon(Weapon):
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
-        description += f'\t{self.type}\t0"\t{self.num_attacks}\t{self.ballistic_skill}\t' \
-                       f'{self.strength}\t{self.armour_penetration}\t{self.damage}'
+        description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
+                       f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
         return description
 
 
@@ -95,6 +96,6 @@ class RangedWeapon(Weapon):
         description = f'\tWeapon name: [{self.name}]\n'
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
         description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
-                       f'{self.strength}\t{self.armour_penetration}\t{self.damage}'
-        description += f'\tWeapon abilities: {", ".join([ability.name for ability in self.abilities])}'
+                       f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
         return description

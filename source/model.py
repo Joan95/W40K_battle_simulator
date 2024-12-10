@@ -1,7 +1,11 @@
+from colorama import Fore
 from enums import WeaponType
 from logging_handler import *
 
 MAX_THROW_D6 = 6
+# Constants for bold text
+BOLD_ON = "\033[1m"
+BOLD_OFF = "\033[0m"
 
 
 class ModelKeywords:
@@ -80,9 +84,9 @@ class Model:
         description += f'\t{self.movement}\t{self.toughness}\t{self.salvation}\t{self.wounds}\t{self.leadership}\t' \
                        f'{self.objective_control}\n'
         if self.invulnerable_save:
-            description += f'\tINVULNERABLE SAVE\t\t{self.invulnerable_save}\n'
-        description += f'\tKEYWORRDS:\n'
-        description += f'\t{", ".join([keyword for keyword in self.keywords])}\n'
+            description += f'\tINVULNERABLE SAVE\t{self.invulnerable_save}\n'
+        description += f'\tKEYWORDS:\n'
+        description += f'\t\t[{", ".join([keyword for keyword in self.keywords])}]\n'
         for weapon in self.weapons:
             description += f'{weapon.get_description()}\n'
         log(description)

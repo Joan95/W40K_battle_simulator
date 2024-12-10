@@ -1,4 +1,5 @@
-from battlefield import *
+from battlefield import get_adjacent_points
+from colorama import Fore
 from shapely.geometry import Polygon, Point
 
 # Constants for bold text
