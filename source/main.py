@@ -54,12 +54,12 @@ def players_handshake(board_map, player_1, player_2):
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
-    while player_1.last_roll_dice == player_2.last_roll_dice:
+    while player_1.last_roll_dice_values[0] == player_2.last_roll_dice_values[0]:
         log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
-    if player_1.last_roll_dice > player_2.last_roll_dice:
+    if player_1.last_roll_dice_values[0] > player_2.last_roll_dice_values[0]:
         player_1.set_rol(PlayerRol.ATTACKER.value)
         player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
         player_2.set_rol(PlayerRol.DEFENDER.value)
@@ -73,15 +73,15 @@ def players_handshake(board_map, player_1, player_2):
 
 def initiatives(player_1, player_2):
     log("[>>] - Rolling dices for deciding initiatives")
-    player_1.roll_players_dice()
-    player_2.roll_players_dice()
+    player_1.roll_players_dice(number_of_dices=1, sides=6)
+    player_2.roll_players_dice(number_of_dices=1, sides=6)
 
-    while player_1.last_roll_dice == player_2.last_roll_dice:
+    while player_1.last_roll_dice_values[0] == player_2.last_roll_dice_values[0]:
         log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
-    if player_1.last_roll_dice > player_2.last_roll_dice:
+    if player_1.last_roll_dice_values[0] > player_2.last_roll_dice_values[0]:
         log(f"\t{player_1.name} will go first!", True)
         players_turn = (player_1, player_2)
     else:
@@ -100,7 +100,7 @@ def place_army_into_boardgame(turns):
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
         player = players[player_count % len(players)]
         if player.has_units_to_deploy():
-            player.deploy_unit()
+            player.deploy_units()
         player_count += 1
 
 
@@ -131,12 +131,10 @@ def movement_phase(active_player, inactive_player):
 
 
 def shooting_phase(active_player, inactive_player):
-    for unit in active_player.get_units_alive():
-        if not unit.is_engaged:
-            # It can shoot, otherwise unit is still under melee combat
-            # Check whether it can reach targeted unit, otherwise it may need to scan for nearest enemies
+    enemy_units = inactive_player.get_units_alive()
+    active_player.allocate_players_ranged_attacks(enemy_units)
 
-            pass
+    # Once attacks have been allocated shot everything
 
 
 def charge_phase(active_player, inactive_player):

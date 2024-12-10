@@ -37,7 +37,7 @@ class BoardHandle:
         self.boardgame[int(coord.y)][int(coord.x)] = model
         model.position = coord
         model.is_alive = True
-        log(f'Model {model.name} set at position {model.position}')
+        log(f'\t\t\tModel [{model.name}] set at position {model.position}')
 
     def clear_model(self, coord):
         self.boardgame[int(coord.y)][int(coord.x)] = "  "
@@ -62,7 +62,10 @@ class BoardHandle:
 
     def is_cell_empty(self, coord):
         x, y = int(coord.x), int(coord.y)
-        return self.boardgame[y][x] in (' ', 'A', 'D')
+        try:
+            return self.boardgame[y][x] in (' ', 'A', 'D')
+        except IndexError:
+            pass
 
 
 def get_random_point_in_zone(zone):
@@ -83,6 +86,10 @@ def get_adjacent_points(coord, distance=1):
         for dy in range(-distance, distance + 1) if (dx, dy) != (0, 0)
     ]
     return adjacent_points
+
+
+def get_distance_between_two_points(point_a, point_b):
+    return ((point_a.x - point_b.x) ** 2 + (point_a.y - point_b.y) ** 2) ** 0.5
 
 
 class Battlefield:
@@ -130,9 +137,16 @@ class Battlefield:
             except IndexError:
                 print(f"Objective at point {coord} could not be set!")
 
-    def place_unit(self, zone, unit):
+    def deploy_unit(self, zone, unit):
         first_model_point = get_random_point_in_zone(zone)
+        while not self.map_configuration.is_cell_empty(first_model_point) and \
+                (zone.contains(first_model_point) or zone.touches(first_model_point)):
+            # Place first model in a valid and available point inside its zone
+            first_model_point = get_random_point_in_zone(zone)
+
         self.map_configuration.set_model(first_model_point, unit.models[0])
+
+        # Now calculate adjacent points for the rest of the models in unit
         adjacent_points = get_adjacent_points(first_model_point)
         model_index = 1
         while model_index < len(unit.models) and adjacent_points:

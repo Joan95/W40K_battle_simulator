@@ -37,6 +37,9 @@ class Weapon:
     def calculate_weapon_potential_damage(self):
         return self.weapon_hit_probability * self.get_weapon_num_attacks() * self.get_weapon_damage()
 
+    def get_weapon_range_attack(self):
+        return int(self.range_attack.replace('"', ''))
+
     def get_weapon_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""
         attacks = self.num_attacks

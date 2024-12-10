@@ -25,10 +25,22 @@ class Army:
         """Check and count units left to be deployed."""
         return sum(1 for unit in self.units if not unit.has_been_deployed)
 
+    def deploy_unit(self, battlefield, deployment_zone):
+        unit_to_deploy = self.get_unit_to_deploy()
+        unit_to_deploy.deploy_unit_in_zone(battlefield, deployment_zone)
+
+    def get_allocatable_army_ranged_attacks(self):
+        army_allocatable_ranged_attacks = dict()
+        # Only alive units can shoot
+        for unit in self.get_units_alive():
+            army_allocatable_ranged_attacks[unit.raw_name] = dict()
+            army_allocatable_ranged_attacks[unit.raw_name] = unit.get_all_unit_ranged_attacks()
+        return army_allocatable_ranged_attacks
+
     def get_units_alive(self):
         return [unit for unit in self.units if not unit.is_destroyed]
 
-    def get_unit_to_place(self):
+    def get_unit_to_deploy(self):
         if self.check_units_left_to_deploy() > 0:
             for unit in self.units:
                 if not unit.has_been_deployed:

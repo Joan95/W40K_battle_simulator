@@ -1,4 +1,3 @@
-from colorama import Fore
 from enums import WeaponType
 from logging_handler import *
 
@@ -73,6 +72,9 @@ class Model:
 
     def get_description(self):
         return self.description
+
+    def get_ranged_weapons(self):
+        return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
 
     def move(self):
         print(f"{self.name} moving!")

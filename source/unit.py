@@ -1,5 +1,6 @@
 from battlefield import get_adjacent_points
 from colorama import Fore
+from logging_handler import log
 from shapely.geometry import Polygon, Point
 
 # Constants for bold text
@@ -21,6 +22,7 @@ def is_position_occupied(board_map, position):
 
 class Unit:
     def __init__(self, name, models):
+        self.raw_name = name
         self.name = name
         self.models = models
         self.is_warlord_in_the_unit = self.check_if_warlord_in_unit()
@@ -43,7 +45,35 @@ class Unit:
         self.update_unit_total_score()
 
         if self.is_warlord_in_the_unit:
-            self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.name} (WL){BOLD_OFF}'
+            self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
+
+    def get_all_unit_ranged_attacks(self):
+        allocatable_shots = dict()
+        if not self.is_engaged:
+            # Unit can shoot only ranged weapons, otherwise unit is still under melee combat
+            log(f'\tUnit {self.name} retrieving allocatable shots for shooting phase ')
+            # First check whether targeted enemy is reachable
+            for model in self.get_models_alive():
+                if model.name not in allocatable_shots:
+                    allocatable_shots[model.name] = dict()
+                    allocatable_shots[model.name]['count'] = 1
+                    allocatable_shots[model.name]['model'] = model
+                    allocatable_shots[model.name]['weapons'] = dict()
+                else:
+                    allocatable_shots[model.name]['count'] += 1
+
+                # Get model's weapon, they can be different between same models we will need to do so each time
+                for weapon in model.get_ranged_weapons():
+                    if weapon.name not in allocatable_shots[model.name]['weapons']:
+                        allocatable_shots[model.name]['weapons'][weapon.name] = dict()
+                        allocatable_shots[model.name]['weapons'][weapon.name]['count'] = 1
+                        allocatable_shots[model.name]['weapons'][weapon.name]['weapon'] = weapon
+                        allocatable_shots[model.name]['weapons'][weapon.name]['attack_range'] = weapon.get_weapon_range_attack()
+                    else:
+                        allocatable_shots[model.name]['weapons'][weapon.name]['count'] += 1
+        else:
+            log(f'\tUnit {self.name} is engaged, skipping shooting phase')
+        return allocatable_shots
 
     def calculate_unit_potential_attack_damage(self):
         self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
@@ -72,7 +102,8 @@ class Unit:
         return is_visible
 
     def deploy_unit_in_zone(self, board, zone_to_deploy):
-        board.place_unit(zone_to_deploy, self)
+        log(f'\t\tDeploying unit [{self.raw_name}]')
+        board.deploy_unit(zone_to_deploy, self)
         self.has_been_deployed = True
         # Now that unit has been deployed, calculate its polygon
         self.get_unit_centroid()
@@ -90,6 +121,9 @@ class Unit:
             self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
         else:
             self.unit_polygon = None
+
+    def get_models_alive(self):
+        return [model for model in self.models if model.is_alive]
 
     def get_unit_centroid(self):
         # Get the centroid of the unit's polygon or the position of the single model
@@ -136,11 +170,11 @@ class Unit:
 
                     new_position = board_map.clamp_position_within_boundaries(new_position)
 
-                    if not self.is_within_engagement_range(new_position) and not is_position_occupied(board_map,
-                                                                                                           new_position):
+                    if not self.is_within_engagement_range(new_position) and not \
+                            is_position_occupied(board_map, new_position):
                         update_model_position(board_map, model, new_position)
                     else:
-                        # Find nearest free position if the current one is occupied or within engagement range
+                        # Find the nearest free position if the current one is occupied or within engagement range
                         nearest_free_position = self.find_nearest_free_position(board_map, new_position)
                         if nearest_free_position:
                             update_model_position(board_map, model, nearest_free_position)

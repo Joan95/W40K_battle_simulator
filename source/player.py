@@ -55,14 +55,17 @@ class Player:
         self.load_army(army_cfg.get('army'))
         self.make_announcement()
 
-    def deploy_unit(self):
+    def allocate_players_ranged_attacks(self, enemy_units):
+        log(f'{self.name} allocating ranged attacks for all the army')
+        self.army.get_allocatable_army_ranged_attacks()
+        # For each allocatable ranged attack check whether it can be placed to unit's targeted enemy, otherwise
+        # we might want to change the target for that concrete attack
+        pass
+
+    def deploy_units(self):
         """Deploy a unit into the player's zone."""
-        unit_to_place = self.army.get_unit_to_place()
-        if unit_to_place:
-            log(f"{self.name} is placing unit {unit_to_place.name}")
-            unit_to_place.deploy_unit_in_zone(self.battlefield, self.deployment_zone)
-        else:
-            log(f"{self.name} has no units left to deploy!")
+        log(f"{self.name} is deploying a unit")
+        self.army.deploy_unit(self.battlefield, self.deployment_zone)
 
     def get_units_alive(self):
         """Return a list of alive units."""
