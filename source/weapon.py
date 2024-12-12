@@ -1,4 +1,7 @@
+from dice import Dices
 from enums import WeaponType
+from logging_handler import log
+
 MAX_THROW_D6 = 6
 
 
@@ -19,28 +22,47 @@ class Weapon:
         self.name = name
         self.range_attack = attributes_tuple[0]
         self.num_attacks = attributes_tuple[1]
-        self.ballistic_skill = attributes_tuple[2]
-        self.strength = attributes_tuple[3]
+        self.ballistic_skill = int(attributes_tuple[2])
+        self.strength = int(attributes_tuple[3])
         self.armour_penetration = attributes_tuple[4]
         self.damage = attributes_tuple[5]
+        self.dices = Dices()
         self.weapon_hit_probability = self.calculate_weapon_hit_probability()
         self.weapon_potential_damage = self.calculate_weapon_potential_damage()
+
+    def attack(self):
+        num_attacks = self.calculate_num_attacks()
+        log(f'[WEAPON] Number of attacks that have entered: #{num_attacks} with strength {self.strength}')
+        return num_attacks
+
+    def calculate_num_attacks(self):
+        num_attacks = 0
+        num_generated_attacks = self.dices.roll_dices(self.num_attacks)
+        log(f'[WEAPON] [{self.name}] has generated #{num_generated_attacks} attacks')
+
+        for throw in range(num_generated_attacks):
+            log(f'[WEAPON] Checking attack #{throw} out of {num_generated_attacks} against weapon\'s ballistic skill '
+                f'of {self.ballistic_skill}')
+            if self.dices.roll_dices() >= self.ballistic_skill:
+                num_attacks += 1
+
+        return num_attacks
 
     def calculate_weapon_hit_probability(self):
         # First we want to know the chance of success of a single dice,
         # it will be 6 - ballistic_skill (that included) / 6
         # And all this will be ^ to num of attacks from that weapon
         hit_probability_single_dice = (MAX_THROW_D6 - (int(self.ballistic_skill) - 1)) / 6
-        hit_probability = hit_probability_single_dice ** self.get_weapon_num_attacks()
+        hit_probability = hit_probability_single_dice ** self.get_weapon_average_num_attacks()
         return hit_probability
 
     def calculate_weapon_potential_damage(self):
-        return self.weapon_hit_probability * self.get_weapon_num_attacks() * self.get_weapon_damage()
+        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * self.get_weapon_damage()
 
     def get_weapon_range_attack(self):
         return int(self.range_attack.replace('"', ''))
 
-    def get_weapon_num_attacks(self):
+    def get_weapon_average_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""
         attacks = self.num_attacks
         try:
@@ -48,7 +70,7 @@ class Weapon:
         except ValueError:
             # It's a D or +something in the num_attacks characteristic
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
-            return int(base.replace('D', '')) + int(extra)
+            return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a dice
 
     def get_weapon_damage(self):
         damage = self.damage
@@ -68,7 +90,7 @@ class MeleeWeapon(Weapon):
         self.description = self.set_description()
 
     def attack(self):
-        pass
+        return super().attack()
 
     def get_description(self):
         return self.description
@@ -90,7 +112,7 @@ class RangedWeapon(Weapon):
         self.description = self.set_description()
 
     def attack(self):
-        pass
+        return super().attack()
 
     def get_description(self):
         return self.description

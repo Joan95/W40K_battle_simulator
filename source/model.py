@@ -1,4 +1,4 @@
-from enums import WeaponType
+from enums import ModelPriority, ModelToughnessAgainstWeaponAttack, WeaponType
 from logging_handler import *
 
 MAX_THROW_D6 = 6
@@ -13,7 +13,7 @@ class ModelKeywords:
 
 
 class Model:
-    def __init__(self, name, attributes_tuple, weapons, keywords, is_warlord=False):
+    def __init__(self, name, attributes_tuple, weapons, keywords, is_warlord=False, more_than_one=False):
         self.name = name
         self.movement = attributes_tuple[0]
         self.toughness = attributes_tuple[1]
@@ -23,19 +23,23 @@ class Model:
         self.objective_control = attributes_tuple[5]
         self.invulnerable_save = attributes_tuple[6]
         self.feel_no_pain = attributes_tuple[7]
-        self.position = None
-        self.weapons = list(weapons)
+
         self.keywords = list(keywords)
+        self.weapons = list(weapons)
+
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
         self.is_warlord = is_warlord
         self.is_alive = True
         self.is_visible = True
         self.melee_attack_impact_probability = 0
-        self.ranged_attack_impact_probability = 0
         self.melee_attack_potential_damage = 0
-        self.ranged_attack_potential_damage = 0
         self.model_potential_attack_damage = None
         self.model_potential_salvation = self.calculate_model_defence_score()
+        self.position = None
+        self.priority_to_die = self.set_model_priority_to_die(more_than_one)
+        self.ranged_attack_impact_probability = 0
+        self.ranged_attack_potential_damage = 0
+
         # Calculate its score
         self.calculate_model_danger_score()
         self.description = self.set_description()
@@ -73,6 +77,31 @@ class Model:
     def get_description(self):
         return self.description
 
+    def get_model_toughness_against_weapon_attack(self, weapon_strength):
+        """
+        Determine the model's toughness against a weapon's attack strength.
+
+        :param weapon_strength: The strength of the attacking weapon.
+        :return: A value from ModelToughnessAgainstWeaponAttack indicating the relative toughness.
+        """
+        log(f'[MODEL] {self.name} has toughness of {self.toughness}')
+
+        if weapon_strength == self.toughness:
+            return ModelToughnessAgainstWeaponAttack.EQUAL.value
+        elif weapon_strength > self.toughness:
+            if weapon_strength >= self.toughness * 2:
+                return ModelToughnessAgainstWeaponAttack.DOUBLE_WEAK.value
+            else:
+                return ModelToughnessAgainstWeaponAttack.WEAK.value
+        else:
+            if weapon_strength * 2 <= self.toughness:
+                return ModelToughnessAgainstWeaponAttack.DOUBLE_STRONG.value
+            else:
+                return ModelToughnessAgainstWeaponAttack.STRONG.value
+
+    def get_model_priority_to_die(self):
+        return self.priority_to_die
+
     def get_ranged_weapons(self):
         return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
 
@@ -93,3 +122,18 @@ class Model:
             description += f'{weapon.get_description()}\n'
         log(description)
         return description
+
+    def set_model_priority_to_die(self, more_than_one):
+        if self.is_warlord:
+            return ModelPriority.WARLORD.value
+        elif 'EPIC HERO' in self.keywords:
+            return ModelPriority.EPIC_HERO.value
+        elif 'CHARACTER' in self.keywords:
+            return ModelPriority.CHARACTER.value
+        elif 'INFANTRY' in self.keywords:
+            if more_than_one:
+                # This is unit basic model
+                return ModelPriority.INFANTRY.value
+            else:
+                # This is boss unit basic model
+                return ModelPriority.UNIT_BOSS.value

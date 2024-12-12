@@ -9,6 +9,22 @@ class GamePhase(Enum):
     FIGHT_PHASE = 5
 
 
+class ModelPriority(Enum):
+    WARLORD = 5
+    EPIC_HERO = 4
+    CHARACTER = 3
+    UNIT_BOSS = 2
+    INFANTRY = 1
+
+
+class ModelToughnessAgainstWeaponAttack(Enum):
+    DOUBLE_WEAK = 2
+    WEAK = 3
+    EQUAL = 4
+    STRONG = 5
+    DOUBLE_STRONG = 6
+
+
 class MovementType(Enum):
     NORMAL_MOVE = 1
     ADVANCE = 2

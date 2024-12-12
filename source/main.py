@@ -52,12 +52,12 @@ def players_handshake(board_map, player_1, player_2):
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
-    while player_1.last_roll_dice_values[0] == player_2.last_roll_dice_values[0]:
+    while player_1.get_last_rolled_dice_values()[0] == player_2.get_last_rolled_dice_values()[0]:
         log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
-    if player_1.last_roll_dice_values[0] > player_2.last_roll_dice_values[0]:
+    if player_1.get_last_rolled_dice_values()[0] > player_2.get_last_rolled_dice_values()[0]:
         player_1.set_rol(PlayerRol.ATTACKER.value)
         player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
         player_2.set_rol(PlayerRol.DEFENDER.value)
@@ -74,12 +74,12 @@ def initiatives(player_1, player_2):
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
-    while player_1.last_roll_dice_values[0] == player_2.last_roll_dice_values[0]:
+    while player_1.get_last_rolled_dice_values()[0] == player_2.get_last_rolled_dice_values()[0]:
         log("[ *] - And it's been a DRAW! Re-rolling dices")
         player_1.roll_players_dice()
         player_2.roll_players_dice()
 
-    if player_1.last_roll_dice_values[0] > player_2.last_roll_dice_values[0]:
+    if player_1.get_last_rolled_dice_values()[0] > player_2.get_last_rolled_dice_values()[0]:
         log(f"\t{player_1.name} will go first!", True)
         players_turn = (player_1, player_2)
     else:
@@ -132,7 +132,8 @@ def shooting_phase(active_player, inactive_player):
     enemy_units = inactive_player.get_units_alive()
     active_player.allocate_players_ranged_attacks(enemy_units)
 
-    # Once attacks have been allocated shot everything
+    # Once attacks have been allocated shoot everything
+    active_player.shoot_ranged_attacks()
     pass
 
 
