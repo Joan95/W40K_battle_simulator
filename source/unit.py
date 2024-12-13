@@ -51,7 +51,7 @@ class Unit:
         allocatable_shots = dict()
         if not self.is_engaged:
             # Unit can shoot only ranged weapons, otherwise unit is still under melee combat
-            log(f'\tUnit {self.name} retrieving allocatable shots for shooting phase ')
+            log(f'\t[UNIT] {self.name} retrieving allocatable shots for shooting phase ')
             # First check whether targeted enemy is reachable
             for model in self.get_models_alive():
                 allocatable_shots[model] = dict()
@@ -61,7 +61,7 @@ class Unit:
                     allocatable_shots[model][weapon] = dict()
                     allocatable_shots[model][weapon]['enemy_to_shot'] = None
         else:
-            log(f'\tUnit {self.name} is engaged, skipping shooting phase')
+            log(f'\t[UNIT] {self.name} is engaged, skipping shooting phase')
         return allocatable_shots
 
     def calculate_unit_potential_attack_damage(self):
@@ -91,7 +91,7 @@ class Unit:
         return is_visible
 
     def deploy_unit_in_zone(self, board, zone_to_deploy):
-        log(f'\t\tDeploying unit [{self.raw_name}]')
+        log(f'\t[UNIT] Deploying [{self.raw_name}]')
         board.deploy_unit(zone_to_deploy, self)
         self.has_been_deployed = True
         # Now that unit has been deployed, calculate its polygon
@@ -147,31 +147,32 @@ class Unit:
             target_position = self.targeted_enemy_unit_to_chase.unit_centroid
 
             for model in self.models:
-                if model.position:
-                    direction_x = target_position.x - model.position.x
-                    direction_y = target_position.y - model.position.y
-                    total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
+                if model.is_alive:
+                    if model.position:
+                        direction_x = target_position.x - model.position.x
+                        direction_y = target_position.y - model.position.y
+                        total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
 
-                    if total_distance > 0:
-                        step = min(self.get_unit_movement(), total_distance)
-                        movement_x = step * (direction_x / total_distance)
-                        movement_y = step * (direction_y / total_distance)
-                    else:
-                        movement_x = 0
-                        movement_y = 0
+                        if total_distance > 0:
+                            step = min(self.get_unit_movement(), total_distance)
+                            movement_x = step * (direction_x / total_distance)
+                            movement_y = step * (direction_y / total_distance)
+                        else:
+                            movement_x = 0
+                            movement_y = 0
 
-                    new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
+                        new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
 
-                    new_position = board_map.clamp_position_within_boundaries(new_position)
+                        new_position = board_map.clamp_position_within_boundaries(new_position)
 
-                    if not self.is_within_engagement_range(new_position) and not \
-                            is_position_occupied(board_map, new_position):
-                        update_model_position(board_map, model, new_position)
-                    else:
-                        # Find the nearest free position if the current one is occupied or within engagement range
-                        nearest_free_position = self.find_nearest_free_position(board_map, new_position)
-                        if nearest_free_position:
-                            update_model_position(board_map, model, nearest_free_position)
+                        if not self.is_within_engagement_range(new_position) and not \
+                                is_position_occupied(board_map, new_position):
+                            update_model_position(board_map, model, new_position)
+                        else:
+                            # Find the nearest free position if the current one is occupied or within engagement range
+                            nearest_free_position = self.find_nearest_free_position(board_map, new_position)
+                            if nearest_free_position:
+                                update_model_position(board_map, model, nearest_free_position)
 
             self.get_unit_centroid()
         else:

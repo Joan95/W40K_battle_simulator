@@ -1,4 +1,3 @@
-from dice import Dices
 from enums import WeaponType
 from logging_handler import log
 
@@ -26,24 +25,23 @@ class Weapon:
         self.strength = int(attributes_tuple[3])
         self.armour_penetration = attributes_tuple[4]
         self.damage = attributes_tuple[5]
-        self.dices = Dices()
         self.weapon_hit_probability = self.calculate_weapon_hit_probability()
         self.weapon_potential_damage = self.calculate_weapon_potential_damage()
 
-    def attack(self):
-        num_attacks = self.calculate_num_attacks()
+    def attack(self, dices):
+        num_attacks = self.calculate_num_attacks(dices)
         log(f'[WEAPON] Number of attacks that have entered: #{num_attacks} with strength {self.strength}')
         return num_attacks
 
-    def calculate_num_attacks(self):
+    def calculate_num_attacks(self, dices):
         num_attacks = 0
-        num_generated_attacks = self.dices.roll_dices(self.num_attacks)
+        num_generated_attacks = dices.roll_dices(self.num_attacks)
         log(f'[WEAPON] [{self.name}] has generated #{num_generated_attacks} attacks')
 
         for throw in range(num_generated_attacks):
             log(f'[WEAPON] Checking attack #{throw} out of {num_generated_attacks} against weapon\'s ballistic skill '
                 f'of {self.ballistic_skill}')
-            if self.dices.roll_dices() >= self.ballistic_skill:
+            if dices.roll_dices() >= self.ballistic_skill:
                 num_attacks += 1
 
         return num_attacks
@@ -89,8 +87,8 @@ class MeleeWeapon(Weapon):
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
 
-    def attack(self):
-        return super().attack()
+    def attack(self, dices):
+        return super().attack(dices)
 
     def get_description(self):
         return self.description
@@ -111,8 +109,8 @@ class RangedWeapon(Weapon):
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
 
-    def attack(self):
-        return super().attack()
+    def attack(self, dices):
+        return super().attack(dices)
 
     def get_description(self):
         return self.description

@@ -133,7 +133,11 @@ def shooting_phase(active_player, inactive_player):
     active_player.allocate_players_ranged_attacks(enemy_units)
 
     # Once attacks have been allocated shoot everything
-    active_player.shoot_ranged_attacks()
+    killed_models = active_player.shoot_ranged_attacks(inactive_player)
+    if killed_models:
+        for model in killed_models:
+            log(f'[REPORT] [{model.name}] has died this turn')
+            board.kill_model(model)
     pass
 
 
@@ -174,7 +178,7 @@ if __name__ == '__main__':
         load_game_configuration()
 
         # Army selection: will assign
-        p1, p2 = load_players_army("Shuan", "Warrià")
+        p1, p2 = load_players_army("Shuan", "Guarrià")
 
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender

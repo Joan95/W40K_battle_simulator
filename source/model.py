@@ -74,6 +74,31 @@ class Model:
         self.model_potential_attack_damage = (self.melee_attack_potential_damage +
                                               self.ranged_attack_potential_damage) / 2
 
+    def defend(self, player_attacking, dices, weapon):
+        log(f'[MODEL] [{self.name}]\'s salvation is {self.salvation}')
+        salvation = self.salvation - weapon.armour_penetration
+        log(f'[MODEL] [{self.name}]\'a salvation should be of {salvation} for this attack')
+        if self.invulnerable_save and salvation > self.invulnerable_save:
+            log(f'[MODEL] [{self.name}] will save with invulnerable save of {self.invulnerable_save} instead')
+            used_salvation = self.invulnerable_save
+        else:
+            used_salvation = self.salvation
+
+        if dices.roll_dices() >= used_salvation:
+            log(f'[MODEL] [{self.name}] saves!')
+        else:
+            if self.feel_no_pain:
+                log(f'[MODEL] [{self.name}] has feel no pain of {self.feel_no_pain}')
+                damage = 0
+                for _ in weapon.damage:
+                    if dices.roll_dices() >= self.feel_no_pain:
+                        log(f'[MODEL] [{self.name}] wound saved')
+                    else:
+                        damage += 1
+                return self.receive_damage(player_attacking, damage)
+            else:
+                return self.receive_damage(player_attacking, weapon.damage)
+
     def get_description(self):
         return self.description
 
@@ -84,7 +109,7 @@ class Model:
         :param weapon_strength: The strength of the attacking weapon.
         :return: A value from ModelToughnessAgainstWeaponAttack indicating the relative toughness.
         """
-        log(f'[MODEL] {self.name} has toughness of {self.toughness}')
+        log(f'\t\t[MODEL] {self.name} has toughness of {self.toughness}')
 
         if weapon_strength == self.toughness:
             return ModelToughnessAgainstWeaponAttack.EQUAL.value
@@ -107,6 +132,25 @@ class Model:
 
     def move(self):
         print(f"{self.name} moving!")
+
+    def receive_damage(self, player_attacking, wounds):
+        log(f'[MODEL] [{self.name}] receives {wounds} wound(s)')
+        if type(wounds) == str and 'D' in wounds:
+            num_wounds = player_attacking.dices.roll_dices(wounds)
+        else:
+            num_wounds = wounds
+        try:
+            self.wounds -= num_wounds
+        except TypeError:
+            self.wounds -= int(num_wounds)
+
+        if self.wounds <= 0:
+            self.is_alive = False
+            log(f'[MODEL] [{self.name}] has died honorably')
+            return True
+        else:
+            log(f'[MODEL] [{self.name}] remaining wound(s) {self.wounds}')
+            return False
 
     def set_description(self):
         description = f'\n----- ----- ----- ----- ----- ----- ----- ----- -----\n'

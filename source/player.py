@@ -1,7 +1,4 @@
 import random
-
-from numpy import number
-
 from army import Army
 from battlefield import get_distance_between_two_points
 from colorama import Fore
@@ -47,7 +44,7 @@ class Player:
         self.deployment_zone = None
         self.database = database
         self.detachment = None
-        self.dices = Dices()
+        self.dices = Dices(name)
         self.faction = None
         self.factions_color = set_color(faction_color)
         self.players_turn = 0
@@ -61,7 +58,7 @@ class Player:
         self.make_announcement()
 
     def allocate_players_ranged_attacks(self, enemy_units):
-        log(f'{self.name} allocating ranged attacks for all the army')
+        log(f'[PLAYER {self.name}] trying to allocate ranged attacks for all the army')
         # Firs of all get all the allocatable ranged attacks from our army
         allocatable_ranged_attacks = self.army.get_allocatable_army_ranged_attacks()
         # For each allocatable ranged attack perform by unit we need to check whether it can be placed to
@@ -80,11 +77,11 @@ class Player:
                                 # The enemy is reachable!
                                 allocatable_ranged_attacks[unit][model][weapon]['enemy_to_shot'] = \
                                     unit.targeted_enemy_unit_to_chase
-                                log(f'Enemy reachable!\n'
-                                    f'\t>> Model {model.name} [{model.position}] can shoot {weapon.name} '
-                                    f'[{weapon.range_attack}]'
-                                    f'\n\t\tTarget {enemy_model.name} [{enemy_model.position}]. '
-                                    f'Distance to enemy {distance_to_enemy}"')
+                                log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
+                                    f'will shoot {weapon.name} [{weapon.range_attack}]. '
+                                    f'Target unit [{unit.targeted_enemy_unit_to_chase.name}]. '
+                                    f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
+                                    f'Distance to target {distance_to_enemy}"')
                                 break
                             else:
                                 # TODO: Try to target a different unit, so model won't lose the shooting phase
@@ -94,9 +91,14 @@ class Player:
         else:
             self.available_army_range_attacks = None
 
+    def defend_attack(self, player_attacking, model_attacked, attacking_weapon):
+        log(f'[PLAYER {self.name}] Defending [{model_attacked.name}] from [{attacking_weapon.name}]. '
+            f'AP: {attacking_weapon.armour_penetration}')
+        return model_attacked.defend(player_attacking, self.dices, attacking_weapon)
+
     def deploy_units(self):
         """Deploy a unit into the player's zone."""
-        log(f"{self.name} is deploying a unit")
+        log(f"[PLAYER {self.name}] is deploying a unit")
         self.army.deploy_unit(self.battlefield, self.deployment_zone)
 
     def gather_all_ranged_attacks(self):
@@ -133,6 +135,12 @@ class Player:
 
         return shots
 
+    def get_first_model_to_die_from_unit(self, unit):
+        model_to_be_shot = unit.get_first_model_to_die()
+        log(f'[PLAYER {self.name}] Sets [{model_to_be_shot.name}] from [{unit.name}] as first model to '
+            f'receive the shots')
+        return model_to_be_shot
+
     def get_last_rolled_dice_values(self):
         return self.dices.last_roll_dice_values
 
@@ -147,17 +155,17 @@ class Player:
     def increment_command_points(self):
         """Increase command points and notify the player."""
         self.command_points += 1
-        log(f"{self.name} has gained a command point, total: {self.command_points}", True)
+        log(f"[PLAYER {self.name}] has gained a command point, total: {self.command_points}", True)
 
     def load_army(self, army_cfg):
         """Load the player's army based on the provided configuration."""
         log(f'Loading army from player {self.name}')
         if not army_cfg:
-            log(f"{self.name} has no army configuration provided.")
+            log(f"[PLAYER {self.name}] has no army configuration provided.")
             return
         for unit in army_cfg.get('units', []):
             self.load_unit(unit)
-        log(f"{self.name}'s army has been loaded!")
+        log(f"[PLAYER {self.name}]'s army has been loaded!")
 
     def load_models(self, models_cfg):
         """Load models for a unit."""
@@ -170,7 +178,7 @@ class Player:
         try:
             model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
         except IndexError:
-            log(f'Model [{models_cfg["name"]}] has not been found in Data Base')
+            log(f'[PLAYER {self.name}] Model [{models_cfg["name"]}] has not been found in Data Base')
             raise IndexError
         for _ in range(amount):
             models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
@@ -203,7 +211,7 @@ class Player:
                         weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name,
                                                                               WeaponType.MELEE)
                     except IndexError:
-                        log(f'Weapon {weapon_name} has no abilities')
+                        log(f'[PLAYER {self.name}] Weapon {weapon_name} has no abilities')
                 else:
                     weapon_cls = RangedWeapon
                     weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
@@ -213,13 +221,13 @@ class Player:
 
     def make_announcement(self):
         """Announce the player's faction and detachment."""
-        log(f"{self.name} will play with {self.faction} '{self.detachment}'")
+        log(f"[PLAYER {self.name}] will play with {self.faction} '{self.detachment}'")
         log(f"Units: {', '.join(unit.name for unit in self.army.units)}")
 
     def move_units(self):
         """Move units towards their targets."""
         for unit in self.get_units_alive():
-            log(f"[PLAYER] Moving {unit.name}")
+            log(f"[PLAYER {self.name}] Moving {unit.name}")
             unit.move_towards_target(self.battlefield)
 
     def roll_players_dice(self, number_of_dices=1, sides=6, show_throw=True):
@@ -227,7 +235,7 @@ class Player:
         self.dices.roll_dices(number_of_dices=number_of_dices, sides=sides)
 
         if show_throw:
-            log_text = f'[PLAYER] {self.name} rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
+            log_text = f'[PLAYER {self.name}] rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
 
             for dice in self.dices.last_roll_dice_values:
                 adjective = random.choice(six_roll_dice_adjectives).upper() + " " if dice == 6 else ""
@@ -259,28 +267,36 @@ class Player:
         }
         role_color = role_colors.get(rol, Fore.RESET)
         role_name = "ATTACKER" if rol == PlayerRol.ATTACKER.value else "DEFENDER"
-        log(f"{self.name} will be the {role_color}{role_name}{Fore.RESET}", True)
+        log(f"[PLAYER {self.name}] will be the {role_color}{role_name}{Fore.RESET}", True)
         self.rol = rol
 
-    def shoot_ranged_attacks(self):
+    def shoot_ranged_attacks(self, inactive_player):
         shots = self.gather_all_ranged_attacks()
+        killed_models = list()
         if shots:
+            log(f'[PLAYER {self.name}] --- --- --- SHOOTING! --- --- ---')
             for unit_shooting in shots:
                 weapon = shots[unit_shooting]['weapon']
                 attacker = shots[unit_shooting]['attacker']
                 for target in shots[unit_shooting]['targets']:
-                    log(f'[{self.name}] [{attacker.name}] shooting [#{target["count"]}] {weapon.name} to {target["unit"].name}')
-                    num_attacks = weapon.attack()
+                    log(f'[PLAYER {self.name}] [{attacker.name}] shooting [#{target["count"]}] {weapon.name} to '
+                        f'{target["unit"].name}')
+                    log(f'[PLAYER {self.name}] Getting weapon attacks')
+                    num_attacks = weapon.attack(self.dices)
                     if num_attacks:
-                        enemy_to_attack = target['unit'].get_first_model_to_die()
+                        enemy_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
                         attack_toughness = enemy_to_attack.get_model_toughness_against_weapon_attack(weapon.strength)
-                        log(f'[{self.name}] Weapon attack has a toughness of {attack_toughness}')
+                        log(f'[PLAYER {self.name}] Weapon attack has a toughness of {attack_toughness}')
                         for attack in range(num_attacks):
                             if self.dices.roll_dices() >= attack_toughness:
-                                log(f'Hit!')
-                                enemy_to_attack.defend_attack()
-                            pass
+                                log(f'[PLAYER {self.name}] And there\'s a HIT from attack #{attack}')
+                                has_died = inactive_player.defend_attack(self, enemy_to_attack, weapon)
+                                if has_died:
+                                    killed_models.append(enemy_to_attack)
+                            else:
+                                log(f'[PLAYER {self.name}] Attack #{attack} fails')
                     else:
-                        log(f'[{self.name}] Attack failed')
+                        log(f'[PLAYER {self.name}] [{attacker.name}] Entire attack failed... [F]')
+            return killed_models
         else:
-            log(f'{self.name}\' army has not been able to target any enemy this turn')
+            log(f'[PLAYER {self.name}] army has not been able to target any enemy this turn')

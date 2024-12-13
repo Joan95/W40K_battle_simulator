@@ -179,7 +179,7 @@ players_army_configuration = \
                 ],
             },
         },
-        'Warrià': {
+        'Guarrià': {
             'faction': 'Chaos Space Marines',
             'detachment': 'Veterans Of The Long War',
             'army': {

@@ -4,7 +4,8 @@ from logging_handler import log
 
 
 class Dices:
-    def __init__(self):
+    def __init__(self, dice_owner):
+        self.dice_owner = dice_owner
         self.last_roll_dice_values = 0
         self.last_roll_dice_value = 0
         self.last_roll_dice_sides = 0
@@ -33,8 +34,10 @@ class Dices:
                 for _ in range(self.last_roll_dice_count):
                     self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-                log(f'[DICE] Rolling #{self.last_roll_dice_count} dice(s) of {self.last_roll_dice_sides} sides with a '
-                    f'modifier of {self.last_roll_modifier}. Result: {self.last_roll_dice_values}')
+                log(f'[DICE from {self.dice_owner}] Rolling #{self.last_roll_dice_count} dice(s) of '
+                    f'{self.last_roll_dice_sides} sides with a '
+                    f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
+                    f'{self.last_roll_modifier}')
                 # Apply the modifier to the total sum of dice rolls
                 self.last_roll_dice_value = sum(self.last_roll_dice_values) + self.last_roll_modifier
             else:
@@ -47,8 +50,10 @@ class Dices:
             for _ in range(self.last_roll_dice_count):
                 self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-            log(f'[DICE] Rolling #{self.last_roll_dice_count} dice(s) of {self.last_roll_dice_sides} sides with a '
-                f'modifier of {self.last_roll_modifier}. Result: {self.last_roll_dice_values}')
+            log(f'[DICE from {self.dice_owner}] Rolling #{self.last_roll_dice_count} dice(s) of '
+                f'{self.last_roll_dice_sides} sides with a '
+                f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
+                f'{self.last_roll_modifier}')
             self.last_roll_dice_value = sum(self.last_roll_dice_values)
 
         return self.last_roll_dice_value
