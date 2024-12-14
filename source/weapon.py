@@ -57,8 +57,13 @@ class Weapon:
     def calculate_weapon_potential_damage(self):
         return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * self.get_weapon_damage()
 
-    def get_weapon_range_attack(self):
-        return int(self.range_attack.replace('"', ''))
+    def get_num_attacks(self, dices):
+        if 'D' in self.num_attacks:
+            num_attacks = dices.roll_dices()
+        else:
+            num_attacks = self.num_attacks
+        log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) with strength {self.strength}')
+        return num_attacks, self.strength
 
     def get_weapon_average_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""
@@ -68,7 +73,7 @@ class Weapon:
         except ValueError:
             # It's a D or +something in the num_attacks characteristic
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
-            return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a dice
+            return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a die
 
     def get_weapon_damage(self):
         damage = self.damage
@@ -78,6 +83,9 @@ class Weapon:
             # It's a D or +something in the num_attacks characteristic
             base, extra = (damage.split('+') + [0])[:2] if '+' in damage else (damage, 0)
             return int(base.replace('D', '')) + int(extra)
+
+    def get_weapon_range_attack(self):
+        return int(self.range_attack.replace('"', ''))
 
 
 class MeleeWeapon(Weapon):
@@ -92,6 +100,9 @@ class MeleeWeapon(Weapon):
 
     def get_description(self):
         return self.description
+
+    def get_num_attacks(self, dices):
+        return super().get_num_attacks(dices)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
@@ -114,6 +125,9 @@ class RangedWeapon(Weapon):
 
     def get_description(self):
         return self.description
+
+    def get_num_attacks(self, dices):
+        return super().get_num_attacks(dices)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'

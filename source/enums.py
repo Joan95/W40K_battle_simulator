@@ -1,5 +1,11 @@
 from enum import Enum
 
+class AttackStrength(Enum):
+    DOUBLE_WEAK = 2
+    WEAK = 3
+    EQUAL = 4
+    STRONG = 5
+    DOUBLE_STRONG = 6
 
 class GamePhase(Enum):
     COMMAND_PHASE = 1
@@ -15,14 +21,6 @@ class ModelPriority(Enum):
     CHARACTER = 3
     UNIT_BOSS = 2
     INFANTRY = 1
-
-
-class ModelToughnessAgainstWeaponAttack(Enum):
-    DOUBLE_WEAK = 2
-    WEAK = 3
-    EQUAL = 4
-    STRONG = 5
-    DOUBLE_STRONG = 6
 
 
 class MovementType(Enum):

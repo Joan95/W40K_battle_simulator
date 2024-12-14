@@ -1,4 +1,4 @@
-from enums import ModelPriority, ModelToughnessAgainstWeaponAttack, WeaponType
+from enums import ModelPriority, WeaponType
 from logging_handler import *
 
 MAX_THROW_D6 = 6
@@ -102,27 +102,9 @@ class Model:
     def get_description(self):
         return self.description
 
-    def get_model_toughness_against_weapon_attack(self, weapon_strength):
-        """
-        Determine the model's toughness against a weapon's attack strength.
-
-        :param weapon_strength: The strength of the attacking weapon.
-        :return: A value from ModelToughnessAgainstWeaponAttack indicating the relative toughness.
-        """
+    def get_model_toughness(self):
         log(f'\t\t[MODEL] {self.name} has toughness of {self.toughness}')
-
-        if weapon_strength == self.toughness:
-            return ModelToughnessAgainstWeaponAttack.EQUAL.value
-        elif weapon_strength > self.toughness:
-            if weapon_strength >= self.toughness * 2:
-                return ModelToughnessAgainstWeaponAttack.DOUBLE_WEAK.value
-            else:
-                return ModelToughnessAgainstWeaponAttack.WEAK.value
-        else:
-            if weapon_strength * 2 <= self.toughness:
-                return ModelToughnessAgainstWeaponAttack.DOUBLE_STRONG.value
-            else:
-                return ModelToughnessAgainstWeaponAttack.STRONG.value
+        return self.toughness
 
     def get_model_priority_to_die(self):
         return self.priority_to_die

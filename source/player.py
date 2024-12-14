@@ -6,6 +6,7 @@ from dice import Dices
 from enums import PlayerRol, WeaponType
 from logging_handler import *
 from model import Model
+from source.enums import AttackStrength
 from unit import Unit
 from weapon import MeleeWeapon, RangedWeapon
 
@@ -281,22 +282,35 @@ class Player:
                 for target in shots[unit_shooting]['targets']:
                     log(f'[PLAYER {self.name}] [{attacker.name}] shooting [#{target["count"]}] {weapon.name} to '
                         f'{target["unit"].name}')
-                    log(f'[PLAYER {self.name}] Getting weapon attacks')
-                    num_attacks = weapon.attack(self.dices)
-                    if num_attacks:
-                        enemy_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
-                        attack_toughness = enemy_to_attack.get_model_toughness_against_weapon_attack(weapon.strength)
-                        log(f'[PLAYER {self.name}] Weapon attack has a toughness of {attack_toughness}')
-                        for attack in range(num_attacks):
-                            if self.dices.roll_dices() >= attack_toughness:
-                                log(f'[PLAYER {self.name}] And there\'s a HIT from attack #{attack}')
-                                has_died = inactive_player.defend_attack(self, enemy_to_attack, weapon)
-                                if has_died:
-                                    killed_models.append(enemy_to_attack)
-                            else:
-                                log(f'[PLAYER {self.name}] Attack #{attack} fails')
+                    log(f'[PLAYER {self.name}] Weapon attacks {weapon.num_attacks}')
+                    # Get weapon number of attacks to do
+                    weapon_num_attacks, weapon_strength = weapon.get_num_attacks(self.dices)
+                    # Retrieve the enemy who will suffer this attack
+                    enemy_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
+                    enemy_toughness = enemy_to_attack.get_model_toughness()
+
+                    if weapon_strength == enemy_toughness:
+                        weapon_attack_strength = AttackStrength.EQUAL.value
                     else:
-                        log(f'[PLAYER {self.name}] [{attacker.name}] Entire attack failed... [F]')
+                        if weapon_strength > enemy_toughness:
+                            weapon_attack_strength = AttackStrength.WEAK.value
+                            if weapon_strength >= enemy_toughness * 2:
+                                weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
+                        else:
+                            weapon_attack_strength = AttackStrength.STRONG.value
+                            if weapon_strength * 2 <= enemy_toughness:
+                                weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
+
+                    log(f'[PLAYER {self.name} attack will success at {weapon_attack_strength}\'s')
+                    for attack in range(weapon_num_attacks):
+                        if self.dices.roll_dices() >= enemy_toughness:
+                            log(f'[PLAYER {self.name}] And there\'s a HIT from attack #{attack}')
+                            has_died = inactive_player.defend_attack(self, enemy_to_attack, weapon)
+                            if has_died:
+                                killed_models.append(enemy_to_attack)
+                        else:
+                            log(f'[PLAYER {self.name}] Attack #{attack} fails')
+
             return killed_models
         else:
             log(f'[PLAYER {self.name}] army has not been able to target any enemy this turn')
