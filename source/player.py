@@ -58,44 +58,68 @@ class Player:
         self.load_army(army_cfg.get('army'))
         self.make_announcement()
 
-    def allocate_players_ranged_attacks(self, enemy_units):
-        log(f'[PLAYER {self.name}] trying to allocate ranged attacks for all the army')
-        # Firs of all get all the allocatable ranged attacks from our army
-        allocatable_ranged_attacks = self.army.get_allocatable_army_ranged_attacks()
+    def allocate_damages(self, damages_list):
+        log(f'[PLAYER {self.name}] is allocating the damages {damages_list} received in last attack')
+        pass
+
+    def choose_unit_targets(self, unit, shoots_dict, enemy_units_list):
+        log(f'[PLAYER {self.name}] trying to get a target for unit {unit.name}')
+
         # For each allocatable ranged attack perform by unit we need to check whether it can be placed to
         # unit's targeted enemy, otherwise we might want to change the target for that concrete attack in order to
         # not lose the range attack for that current phase
         at_least_one_shot_is_available = False
-        for unit in allocatable_ranged_attacks:
-            for model in allocatable_ranged_attacks[unit]:
-                for weapon in allocatable_ranged_attacks[unit][model]:
-                    if not allocatable_ranged_attacks[unit][model][weapon]['enemy_to_shot']:
-                        # There is no target, let's see if we reach our main target
-                        for enemy_model in unit.targeted_enemy_unit_to_chase.get_models_alive():
-                            distance_to_enemy = get_distance_between_two_points(model.position, enemy_model.position)
-                            if weapon.get_weapon_range_attack() >= distance_to_enemy:
-                                at_least_one_shot_is_available = True
-                                # The enemy is reachable!
-                                allocatable_ranged_attacks[unit][model][weapon]['enemy_to_shot'] = \
-                                    unit.targeted_enemy_unit_to_chase
-                                log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
-                                    f'will shoot {weapon.name} [{weapon.range_attack}]. '
-                                    f'Target unit [{unit.targeted_enemy_unit_to_chase.name}]. '
-                                    f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
-                                    f'Distance to target {distance_to_enemy}"')
-                                break
-                            else:
-                                # TODO: Try to target a different unit, so model won't lose the shooting phase
-                                pass
+        for model in shoots_dict:
+            for weapon in shoots_dict[model]:
+                if not shoots_dict[model][weapon]['enemy_to_shot']:
+                    # There is no target, let's see if we reach our main target
+                    for enemy_model in unit.targeted_enemy_unit_to_chase.get_models_alive():
+                        distance_to_enemy = get_distance_between_two_points(model.position, enemy_model.position)
+                        if weapon.get_weapon_range_attack() >= distance_to_enemy:
+                            at_least_one_shot_is_available = True
+                            # The enemy is reachable!
+                            shoots_dict[model][weapon]['enemy_to_shot'] = \
+                                unit.targeted_enemy_unit_to_chase
+                            log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
+                                f'will shoot {weapon.name} [{weapon.range_attack}]. '
+                                f'Target unit [{unit.targeted_enemy_unit_to_chase.name}]. '
+                                f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
+                                f'Distance to target {distance_to_enemy}"')
+                            break
+                        else:
+                            # TODO: Try to target a different unit, so model won't lose the shooting phase
+                            pass
         if at_least_one_shot_is_available:
-            self.available_army_range_attacks = allocatable_ranged_attacks
+            self.available_army_range_attacks = unit
         else:
             self.available_army_range_attacks = None
 
-    def defend_attack(self, player_attacking, model_attacked, attacking_weapon):
-        log(f'[PLAYER {self.name}] Defending [{model_attacked.name}] from [{attacking_weapon.name}]. '
-            f'AP: {attacking_weapon.armour_penetration}')
-        return model_attacked.defend(player_attacking, self.dices, attacking_weapon)
+    def get_available_units_for_shooting(self):
+        units_available_for_shooting = self.army.get_units_available_for_shooting()
+        log(f'[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
+            f'{", ".join([unit.name for unit in units_available_for_shooting])}')
+        return units_available_for_shooting
+
+    def get_model_salvation(self, model_attacked, weapon_armour_penetration):
+        raw_salvation = model_attacked.get_model_salvation()
+        salvation = raw_salvation - weapon_armour_penetration
+        invulnerable_save = model_attacked.get_invulnerable_save()
+
+        if raw_salvation > 6 and invulnerable_save:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
+                f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return invulnerable_save
+
+        if invulnerable_save < salvation:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
+                f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return invulnerable_save
+        else:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'own salvation of {salvation} (SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return salvation
 
     def deploy_units(self):
         """Deploy a unit into the player's zone."""
@@ -286,8 +310,8 @@ class Player:
                     # Get weapon number of attacks to do
                     weapon_num_attacks, weapon_strength = weapon.get_num_attacks(self.dices)
                     # Retrieve the enemy who will suffer this attack
-                    enemy_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
-                    enemy_toughness = enemy_to_attack.get_model_toughness()
+                    enemy_model_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
+                    enemy_toughness = enemy_model_to_attack.get_model_toughness()
 
                     if weapon_strength == enemy_toughness:
                         weapon_attack_strength = AttackStrength.EQUAL.value
@@ -301,15 +325,35 @@ class Player:
                             if weapon_strength * 2 <= enemy_toughness:
                                 weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
 
-                    log(f'[PLAYER {self.name} attack will success at {weapon_attack_strength}\'s')
-                    for attack in range(weapon_num_attacks):
-                        if self.dices.roll_dices() >= enemy_toughness:
-                            log(f'[PLAYER {self.name}] And there\'s a HIT from attack #{attack}')
-                            has_died = inactive_player.defend_attack(self, enemy_to_attack, weapon)
-                            if has_died:
-                                killed_models.append(enemy_to_attack)
+                    log(f'[PLAYER {self.name}] [{attacker.name}] attack will success at {weapon_attack_strength}\'s')
+                    self.dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
+                    attacks = self.dices.last_roll_dice_values
+                    successful_attacks = list()
+                    for count, attack in enumerate(attacks, start=1):
+                        if attack >= weapon_attack_strength:
+                            successful_attacks.append(attack)
+
+                    if successful_attacks:
+                        log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
+                            f'attack(s) from {attacks}')
+
+                        hits = list()
+                        enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
+                                                                              weapon.armour_penetration)
+                        for count in range(len(successful_attacks)):
+                            if inactive_player.dices.roll_dices() < enemy_salvation:
+                                hits.append(inactive_player.dices.last_roll_dice_value)
+                        if hits:
+                            log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
+                            damages = list()
+                            for _ in hits:
+                                damages.append(weapon.get_damage(self.dices))
+                            log(f'Attack damages are {damages}')
+                            killed_models = inactive_player.allocate_damages(damages)
                         else:
-                            log(f'[PLAYER {self.name}] Attack #{attack} fails')
+                            log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
+                    else:
+                        log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
 
             return killed_models
         else:

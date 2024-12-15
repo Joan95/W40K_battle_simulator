@@ -74,40 +74,22 @@ class Model:
         self.model_potential_attack_damage = (self.melee_attack_potential_damage +
                                               self.ranged_attack_potential_damage) / 2
 
-    def defend(self, player_attacking, dices, weapon):
-        log(f'[MODEL] [{self.name}]\'s salvation is {self.salvation}')
-        salvation = self.salvation - weapon.armour_penetration
-        log(f'[MODEL] [{self.name}]\'a salvation should be of {salvation} for this attack')
-        if self.invulnerable_save and salvation > self.invulnerable_save:
-            log(f'[MODEL] [{self.name}] will save with invulnerable save of {self.invulnerable_save} instead')
-            used_salvation = self.invulnerable_save
-        else:
-            used_salvation = self.salvation
-
-        if dices.roll_dices() >= used_salvation:
-            log(f'[MODEL] [{self.name}] saves!')
-        else:
-            if self.feel_no_pain:
-                log(f'[MODEL] [{self.name}] has feel no pain of {self.feel_no_pain}')
-                damage = 0
-                for _ in weapon.damage:
-                    if dices.roll_dices() >= self.feel_no_pain:
-                        log(f'[MODEL] [{self.name}] wound saved')
-                    else:
-                        damage += 1
-                return self.receive_damage(player_attacking, damage)
-            else:
-                return self.receive_damage(player_attacking, weapon.damage)
-
     def get_description(self):
         return self.description
+
+    def get_invulnerable_save(self):
+        return self.invulnerable_save
+
+    def get_model_priority_to_die(self):
+        return self.priority_to_die
+
+    def get_model_salvation(self):
+        log(f'\t\t[MODEL] {self.name} has salvation of {self.salvation}+ ')
+        return self.salvation
 
     def get_model_toughness(self):
         log(f'\t\t[MODEL] {self.name} has toughness of {self.toughness}')
         return self.toughness
-
-    def get_model_priority_to_die(self):
-        return self.priority_to_die
 
     def get_ranged_weapons(self):
         return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]

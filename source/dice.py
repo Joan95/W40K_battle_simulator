@@ -57,4 +57,3 @@ class Dices:
             self.last_roll_dice_value = sum(self.last_roll_dice_values)
 
         return self.last_roll_dice_value
-

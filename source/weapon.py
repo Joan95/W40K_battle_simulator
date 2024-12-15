@@ -55,11 +55,20 @@ class Weapon:
         return hit_probability
 
     def calculate_weapon_potential_damage(self):
-        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * self.get_weapon_damage()
+        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * self.get_weapon_raw_damage()
+
+    def get_damage(self, dices):
+        if isinstance(self.damage, str) and 'D' in self.damage:
+            log(f'[WEAPON] {self.name}\'s damage is {self.damage} will have to throw the dices for it')
+            damage = dices.roll_dices(self.damage)
+        else:
+            damage = self.num_attacks
+        log(f'[WEAPON] {self.name}\'s damage is {damage}')
+        return damage
 
     def get_num_attacks(self, dices):
-        if 'D' in self.num_attacks:
-            num_attacks = dices.roll_dices()
+        if isinstance(self.num_attacks, str) and 'D' in self.num_attacks:
+            num_attacks = dices.roll_dices(self.num_attacks)
         else:
             num_attacks = self.num_attacks
         log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) with strength {self.strength}')
@@ -75,7 +84,7 @@ class Weapon:
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
             return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a die
 
-    def get_weapon_damage(self):
+    def get_weapon_raw_damage(self):
         damage = self.damage
         try:
             return int(damage)

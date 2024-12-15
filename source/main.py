@@ -130,7 +130,16 @@ def movement_phase(active_player, inactive_player):
 
 def shooting_phase(active_player, inactive_player):
     enemy_units = inactive_player.get_units_alive()
-    active_player.allocate_players_ranged_attacks(enemy_units)
+
+    units_available_for_shooting = active_player.get_available_units_for_shooting()
+
+    # 1 - Choose Unit for performing shoots
+    for unit in units_available_for_shooting:
+        # 2 - Choose targets for that unit
+        active_player.choose_unit_targets(unit, units_available_for_shooting[unit], enemy_units)
+
+        # 3 - Perform range attack
+        # 4 - Repeat with very next Unit
 
     # Once attacks have been allocated shoot everything
     killed_models = active_player.shoot_ranged_attacks(inactive_player)

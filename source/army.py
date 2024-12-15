@@ -29,23 +29,24 @@ class Army:
         unit_to_deploy = self.get_unit_to_deploy()
         unit_to_deploy.deploy_unit_in_zone(battlefield, deployment_zone)
 
-    def get_allocatable_army_ranged_attacks(self):
-        army_allocatable_ranged_attacks = dict()
-        # Only alive units can shoot
-        for unit in self.get_units_alive():
-            army_allocatable_ranged_attacks[unit] = dict()
-            army_allocatable_ranged_attacks[unit] = unit.get_all_unit_ranged_attacks()
-
-        return army_allocatable_ranged_attacks
-
-    def get_units_alive(self):
-        return [unit for unit in self.units if not unit.is_destroyed]
-
     def get_unit_to_deploy(self):
         if self.check_units_left_to_deploy() > 0:
             for unit in self.units:
                 if not unit.has_been_deployed:
                     return unit
+
+    def get_units_alive(self):
+        return [unit for unit in self.units if not unit.is_destroyed]
+
+    def get_units_available_for_shooting(self):
+        units_available_for_shooting = dict()
+        for unit in self.get_units_alive():
+            if not unit.is_unit_engaged():
+                # Only alive units and these which are not engaged can shoot
+                units_available_for_shooting[unit] = dict()
+                units_available_for_shooting[unit] = unit.get_models_available_for_shooting()
+
+        return units_available_for_shooting
 
     def target_enemies(self, enemy_units):
         if not enemy_units:

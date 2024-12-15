@@ -47,23 +47,6 @@ class Unit:
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
 
-    def get_all_unit_ranged_attacks(self):
-        allocatable_shots = dict()
-        if not self.is_engaged:
-            # Unit can shoot only ranged weapons, otherwise unit is still under melee combat
-            log(f'\t[UNIT] {self.name} retrieving allocatable shots for shooting phase ')
-            # First check whether targeted enemy is reachable
-            for model in self.get_models_alive():
-                allocatable_shots[model] = dict()
-
-                # Get model's weapon, they can be different between same models we will need to do so each time
-                for weapon in model.get_ranged_weapons():
-                    allocatable_shots[model][weapon] = dict()
-                    allocatable_shots[model][weapon]['enemy_to_shot'] = None
-        else:
-            log(f'\t[UNIT] {self.name} is engaged, skipping shooting phase')
-        return allocatable_shots
-
     def calculate_unit_potential_attack_damage(self):
         self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
 
@@ -119,6 +102,20 @@ class Unit:
     def get_models_alive(self):
         return [model for model in self.models if model.is_alive]
 
+    def get_models_available_for_shooting(self):
+        models_available_for_shooting = dict()
+        log(f'\t[UNIT] {self.name} retrieving models available for shooting phase ')
+
+        for model in self.get_models_alive():
+            models_available_for_shooting[model] = dict()
+
+            # Get model's weapon, they can be different between same models we will need to do so each time
+            for weapon in model.get_ranged_weapons():
+                models_available_for_shooting[model][weapon] = dict()
+                models_available_for_shooting[model][weapon]['enemy_to_shot'] = None
+
+        return models_available_for_shooting
+
     def get_unit_centroid(self):
         # Get the centroid of the unit's polygon or the position of the single model
         self.form_unit_polygon()
@@ -133,6 +130,9 @@ class Unit:
 
     def get_unit_movement(self):
         return int(self.models[0].movement.replace('"', ''))
+
+    def is_unit_engaged(self):
+        return self.is_engaged
 
     def is_within_engagement_range(self, position):
         # Define an engagement range (e.g., 1 unit)
