@@ -62,14 +62,20 @@ class Player:
         log(f'[PLAYER {self.name}] is allocating the damages {damages_list} received in last attack')
         pass
 
-    def choose_unit_targets(self, unit, shoots_dict, enemy_units_list):
+    def choose_target_for_model(self, model):
+        for weapon in model.get_ranged_weapons():
+            pass
+
+    def choose_target_for_unit(self, unit, enemy_units_list):
         log(f'[PLAYER {self.name}] trying to get a target for unit {unit.name}')
 
         # For each allocatable ranged attack perform by unit we need to check whether it can be placed to
         # unit's targeted enemy, otherwise we might want to change the target for that concrete attack in order to
         # not lose the range attack for that current phase
         at_least_one_shot_is_available = False
-        for model in shoots_dict:
+        for model in unit.get_models_available_for_shooting():
+            self.choose_target_for_model(model)
+
             for weapon in shoots_dict[model]:
                 if not shoots_dict[model][weapon]['enemy_to_shot']:
                     # There is no target, let's see if we reach our main target

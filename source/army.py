@@ -39,13 +39,10 @@ class Army:
         return [unit for unit in self.units if not unit.is_destroyed]
 
     def get_units_available_for_shooting(self):
-        units_available_for_shooting = dict()
+        units_available_for_shooting = list()
         for unit in self.get_units_alive():
             if not unit.is_unit_engaged():
-                # Only alive units and these which are not engaged can shoot
-                units_available_for_shooting[unit] = dict()
-                units_available_for_shooting[unit] = unit.get_models_available_for_shooting()
-
+                units_available_for_shooting.append(unit)
         return units_available_for_shooting
 
     def target_enemies(self, enemy_units):
