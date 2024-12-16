@@ -231,9 +231,6 @@ class Player:
     def set_target_for_model(self, model, enemy_units_list):
         at_least_one_shot_is_available = False
 
-        # Clean current target unit for that model
-        model.current_target_unit = None
-
         target_candidates = list()
         # Find the most appropriate enemy unit to target based on proximity and weakness
         for enemy_unit in enemy_units_list:
@@ -248,14 +245,15 @@ class Player:
 
         # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
         for weapon in model.get_model_weapons_ranged():
+            weapon.target_unit = None
             for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
                 if weapon.get_weapon_range_attack() >= distance_to_enemy:
                     at_least_one_shot_is_available = True
-                    model.current_target_unit = enemy_unit
+                    weapon.target_unit = enemy_unit
                     # The main enemy unit is reachable!
                     log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
                         f'will shoot {weapon.name} [{weapon.range_attack}]. '
-                        f'Target unit [{model.current_target_unit.name}]. '
+                        f'Target unit [{weapon.target_unit.name}]. '
                         f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
                         f'Distance to target {distance_to_enemy}"')
                     break
@@ -270,69 +268,6 @@ class Player:
         if not unit_has_a_shot:
             log(f'[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
         return unit_has_a_shot
-
-    def shoot_ranged_attacks(self):
-        killed_models = list()
-        if shots:
-            log(f'[PLAYER {self.name}] --- --- --- SHOOTING! --- --- ---')
-            for unit_shooting in shots:
-                weapon = shots[unit_shooting]['weapon']
-                attacker = shots[unit_shooting]['attacker']
-                for target in shots[unit_shooting]['targets']:
-                    log(f'[PLAYER {self.name}] [{attacker.name}] shooting [#{target["count"]}] {weapon.name} to '
-                        f'{target["unit"].name}')
-                    log(f'[PLAYER {self.name}] Weapon attacks {weapon.num_attacks}')
-                    # Get weapon number of attacks to do
-                    weapon_num_attacks, weapon_strength = weapon.get_num_attacks(self.dices)
-                    # Retrieve the enemy who will suffer this attack
-                    enemy_model_to_attack = inactive_player.get_first_model_to_die_from_unit(target['unit'])
-                    enemy_toughness = enemy_model_to_attack.get_model_toughness()
-
-                    if weapon_strength == enemy_toughness:
-                        weapon_attack_strength = AttackStrength.EQUAL.value
-                    else:
-                        if weapon_strength > enemy_toughness:
-                            weapon_attack_strength = AttackStrength.WEAK.value
-                            if weapon_strength >= enemy_toughness * 2:
-                                weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
-                        else:
-                            weapon_attack_strength = AttackStrength.STRONG.value
-                            if weapon_strength * 2 <= enemy_toughness:
-                                weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
-
-                    log(f'[PLAYER {self.name}] [{attacker.name}] attack will success at {weapon_attack_strength}\'s')
-                    self.dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
-                    attacks = self.dices.last_roll_dice_values
-                    successful_attacks = list()
-                    for count, attack in enumerate(attacks, start=1):
-                        if attack >= weapon_attack_strength:
-                            successful_attacks.append(attack)
-
-                    if successful_attacks:
-                        log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
-                            f'attack(s) from {attacks}')
-
-                        hits = list()
-                        enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
-                                                                              weapon.armour_penetration)
-                        for count in range(len(successful_attacks)):
-                            if inactive_player.dices.roll_dices() < enemy_salvation:
-                                hits.append(inactive_player.dices.last_roll_dice_value)
-                        if hits:
-                            log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
-                            damages = list()
-                            for _ in hits:
-                                damages.append(weapon.get_damage(self.dices))
-                            log(f'Attack damages are {damages}')
-                            killed_models = inactive_player.allocate_damages(damages)
-                        else:
-                            log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
-                    else:
-                        log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
-
-            return killed_models
-        else:
-            log(f'[PLAYER {self.name}] army has not been able to target any enemy this turn')
 
 
 def get_distance_between_models(model1, model2):

@@ -128,6 +128,95 @@ def movement_phase(active_player, inactive_player):
     active_player.battlefield.display_board()
 
 
+def resolve_impact_roll(active_player, weapon):
+    # Get weapon number of attacks to do
+    log(f'[PLAYER {active_player.name}] [{weapon.name}] attacks {weapon.num_attacks}')
+    weapon_num_attacks, weapon_ballistic_skill = weapon.get_num_attacks(active_player.dices)
+
+    log(f'[PLAYER {active_player.name}] [{weapon.name}] attack(s) will success at {weapon_ballistic_skill}\'s')
+    active_player.dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
+    attacks = active_player.dices.last_roll_dice_values
+    successful_attacks = list()
+    for count, attack in enumerate(attacks, start=1):
+        if attack >= weapon_ballistic_skill:
+            successful_attacks.append(attack)
+    return successful_attacks
+
+
+def resolve_wound_roll(attacks):
+    pass
+
+
+def resolve_player_attacks(active_player, inactive_player, active_player_attacks):
+    log(f'Resolving attacks')
+
+    for weapon in active_player_attacks:
+        log(f'[PLAYER {active_player.name}] resolving attacks for '
+            f'[{active_player_attacks[weapon]["attacker"].name}] [{weapon.name}] against '
+            f'[{active_player_attacks[weapon]["target"].raw_name}]')
+
+        # 1 - Impact Roll
+        successful_attacks = resolve_impact_roll(active_player, weapon)
+
+        log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_attacks)} successful '
+            f'attack(s) from {successful_attacks}')
+
+        # 2 - Wound Roll
+        resolve_wound_roll(successful_attacks)
+
+        # Get weapon number of attacks to do
+        weapon_num_attacks, weapon_strength = weapon.get_num_attacks(dices)
+        # Get the enemy unit toughness who will suffer this attack
+        enemy_toughness = target.get_unit_toughness()
+
+        if weapon_strength == enemy_toughness:
+            weapon_attack_strength = AttackStrength.EQUAL.value
+        else:
+            if weapon_strength > enemy_toughness:
+                weapon_attack_strength = AttackStrength.WEAK.value
+                if weapon_strength >= enemy_toughness * 2:
+                    weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
+            else:
+                weapon_attack_strength = AttackStrength.STRONG.value
+                if weapon_strength * 2 <= enemy_toughness:
+                    weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
+
+        log(f'[PLAYER {self.name}] [{weapon.name}] attack(s) will success at {weapon_attack_strength}\'s')
+        dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
+        attacks = dices.last_roll_dice_values
+        successful_attacks = list()
+        for count, attack in enumerate(attacks, start=1):
+            if attack >= weapon_attack_strength:
+                successful_attacks.append(attack)
+
+        if successful_attacks:
+            log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
+                f'attack(s) from {successful_attacks}')
+
+            hits = list()
+            enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
+                                                                  weapon.armour_penetration)
+            for count in range(len(successful_attacks)):
+                if inactive_player.dices.roll_dices() < enemy_salvation:
+                    hits.append(inactive_player.dices.last_roll_dice_value)
+            if hits:
+                log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
+                damages = list()
+                for _ in hits:
+                    damages.append(weapon.get_damage(self.dices))
+                log(f'Attack damages are {damages}')
+                killed_models = inactive_player.allocate_damages(damages)
+            else:
+                log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
+        else:
+            log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
+        pass
+
+    # 2 - Wound Roll
+
+    pass
+
+
 def shooting_phase(active_player, inactive_player):
     enemy_units = inactive_player.get_units_alive()
     units_available_for_shooting = active_player.get_available_units_for_shooting()
@@ -140,7 +229,9 @@ def shooting_phase(active_player, inactive_player):
         # 3 - Perform range attack
         # At least one model can shoot a target
         if unit_can_shoot:
-            killed_models = active_player.shoot_ranged_attacks()
+            attacks = unit.get_models_ranged_attacks()
+            resolve_player_attacks(active_player, inactive_player, attacks)
+            killed_models = unit.shoot_ranged_attacks(active_player.dices)
             if killed_models:
                 for model in killed_models:
                     log(f'[REPORT] [{model.name}] has died this turn')

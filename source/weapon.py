@@ -27,6 +27,7 @@ class Weapon:
         self.damage = attributes_tuple[5]
         self.weapon_hit_probability = self.calculate_weapon_hit_probability()
         self.weapon_potential_damage = self.calculate_weapon_potential_damage()
+        self.target_unit = None
 
     def attack(self, dices):
         num_attacks = self.calculate_num_attacks(dices)
@@ -72,8 +73,8 @@ class Weapon:
             num_attacks = dices.roll_dices(self.num_attacks)
         else:
             num_attacks = self.num_attacks
-        log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) with strength {self.strength}')
-        return num_attacks, self.strength
+        log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
+        return num_attacks, self.ballistic_skill
 
     def get_weapon_average_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""

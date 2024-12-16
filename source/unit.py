@@ -1,5 +1,6 @@
 from battlefield import get_adjacent_points
 from colorama import Fore
+from enums import AttackStrength
 from logging_handler import log
 from shapely.geometry import Polygon, Point
 
@@ -94,6 +95,23 @@ class Unit:
     def do_moral_check(self, value):
         pass
 
+    def find_nearest_free_position(self, board_map, position):
+        # Breadth-first search to find the nearest free position
+        from collections import deque
+        visited = set()
+        queue = deque([position])
+        while queue:
+            current_position = queue.popleft()
+            if not is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
+                    current_position):
+                return current_position
+            visited.add(current_position)
+            adjacent_points = get_adjacent_points(current_position)
+            for point in adjacent_points:
+                if point not in visited and 0 <= point.x < board_map.map_configuration.wide and 0 <= point.y < board_map.map_configuration.large:
+                    queue.append(point)
+        return None
+
     def form_unit_polygon(self):
         # Creates unit's polygon from models position
         model_coordinates = [model.position for model in self.get_models_alive()]
@@ -112,6 +130,22 @@ class Unit:
 
     def get_models_alive(self):
         return [model for model in self.models if model.is_alive]
+
+    def get_models_ranged_attacks(self):
+        shooting_dict = dict()
+        for model in self.get_models_alive():
+            for weapon in model.get_model_weapons_ranged():
+                if weapon.target_unit:
+                    if weapon not in shooting_dict:
+                        shooting_dict[weapon] = dict()
+
+                    if weapon.target_unit not in shooting_dict[weapon]:
+                        shooting_dict[weapon]['target'] = weapon.target_unit
+                        shooting_dict[weapon]['count'] = 1
+                        shooting_dict[weapon]['attacker'] = model
+                    else:
+                        shooting_dict[weapon]['count'] += 1
+        return shooting_dict
 
     def get_unit_models_available_for_shooting(self):
         models_available_for_shooting = list()
@@ -137,6 +171,10 @@ class Unit:
 
     def get_unit_movement(self):
         return int(self.models[0].movement.replace('"', ''))
+
+    def get_unit_toughness(self):
+        log(f'\t[UNIT] Checking unit\'s toughness')
+        return self.models[0].get_model_toughness()
 
     def is_unit_engaged(self):
         return self.is_engaged
@@ -184,25 +222,66 @@ class Unit:
         else:
             print("No targeted enemy...")
 
-    def find_nearest_free_position(self, board_map, position):
-        # Breadth-first search to find the nearest free position
-        from collections import deque
-        visited = set()
-        queue = deque([position])
-        while queue:
-            current_position = queue.popleft()
-            if not is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
-                    current_position):
-                return current_position
-            visited.add(current_position)
-            adjacent_points = get_adjacent_points(current_position)
-            for point in adjacent_points:
-                if point not in visited and 0 <= point.x < board_map.map_configuration.wide and 0 <= point.y < board_map.map_configuration.large:
-                    queue.append(point)
-        return None
-
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
+
+    def shoot_ranged_attacks(self, dices):
+        shooting_dict = self.get_models_ranged_attacks()
+        log(f'[UNIT] --- --- ---  {self.name} unit is shooting! --- --- ---')
+
+        for weapon in shooting_dict:
+            for target in shooting_dict[weapon]:
+                log(f'[PLAYER {self.name}] [] shooting #{shooting_dict[weapon][target]} [{weapon.name}] against '
+                    f'[{target.raw_name}]')
+                log(f'[PLAYER {self.name}] [{weapon.name}] attacks {weapon.num_attacks}')
+
+                # Get weapon number of attacks to do
+                weapon_num_attacks, weapon_strength = weapon.get_num_attacks(dices)
+                # Get the enemy unit toughness who will suffer this attack
+                enemy_toughness = target.get_unit_toughness()
+
+                if weapon_strength == enemy_toughness:
+                    weapon_attack_strength = AttackStrength.EQUAL.value
+                else:
+                    if weapon_strength > enemy_toughness:
+                        weapon_attack_strength = AttackStrength.WEAK.value
+                        if weapon_strength >= enemy_toughness * 2:
+                            weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
+                    else:
+                        weapon_attack_strength = AttackStrength.STRONG.value
+                        if weapon_strength * 2 <= enemy_toughness:
+                            weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
+
+                log(f'[PLAYER {self.name}] [{weapon.name}] attack(s) will success at {weapon_attack_strength}\'s')
+                dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
+                attacks = dices.last_roll_dice_values
+                successful_attacks = list()
+                for count, attack in enumerate(attacks, start=1):
+                    if attack >= weapon_attack_strength:
+                        successful_attacks.append(attack)
+
+                if successful_attacks:
+                    log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
+                        f'attack(s) from {successful_attacks}')
+
+                    hits = list()
+                    enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
+                                                                          weapon.armour_penetration)
+                    for count in range(len(successful_attacks)):
+                        if inactive_player.dices.roll_dices() < enemy_salvation:
+                            hits.append(inactive_player.dices.last_roll_dice_value)
+                    if hits:
+                        log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
+                        damages = list()
+                        for _ in hits:
+                            damages.append(weapon.get_damage(self.dices))
+                        log(f'Attack damages are {damages}')
+                        killed_models = inactive_player.allocate_damages(damages)
+                    else:
+                        log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
+                else:
+                    log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
+            pass
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted

@@ -28,7 +28,6 @@ class Model:
         self.weapons = list(weapons)
 
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
-        self.current_target_unit = None
         self.is_warlord = is_warlord
         self.is_alive = True
         self.is_visible = True
