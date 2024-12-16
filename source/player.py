@@ -1,12 +1,10 @@
 import random
 from army import Army
-from battlefield import get_distance_between_two_points
 from colorama import Fore
 from dice import Dices
 from enums import PlayerRol, WeaponType
 from logging_handler import *
 from model import Model
-from source.enums import AttackStrength
 from unit import Unit
 from weapon import MeleeWeapon, RangedWeapon
 
@@ -57,9 +55,9 @@ class Player:
         self.load_army(army_cfg.get('army'))
         self.make_announcement()
 
-    def allocate_damages(self, damages_list):
-        log(f'[PLAYER {self.name}] is allocating the damages {damages_list} received in last attack')
-        pass
+    def allocate_damage(self, model, damage):
+        log(f'[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
+        return model.receive_damage(self.dices, damage)
 
     def get_available_units_for_shooting(self):
         units_available_for_shooting = self.army.get_units_available_for_shooting()
@@ -67,7 +65,7 @@ class Player:
             f'{", ".join([unit.name for unit in units_available_for_shooting])}')
         return units_available_for_shooting
 
-    def get_model_salvation(self, model_attacked, weapon_armour_penetration):
+    def calculate_model_salvation(self, model_attacked, weapon_armour_penetration):
         raw_salvation = model_attacked.get_model_salvation()
         salvation = raw_salvation - weapon_armour_penetration
         invulnerable_save = model_attacked.get_invulnerable_save()
@@ -78,7 +76,7 @@ class Player:
                 f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return invulnerable_save
 
-        if invulnerable_save < salvation:
+        if invulnerable_save and invulnerable_save < salvation:
             log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
                 f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
                 f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
@@ -92,12 +90,6 @@ class Player:
         """Deploy a unit into the player's zone."""
         log(f"[PLAYER {self.name}] is deploying a unit")
         self.army.deploy_unit(self.battlefield, self.deployment_zone)
-
-    def get_first_model_to_die_from_unit(self, unit):
-        model_to_be_shot = unit.get_first_model_to_die()
-        log(f'[PLAYER {self.name}] Sets [{model_to_be_shot.name}] from [{unit.name}] as first model to '
-            f'receive the shots')
-        return model_to_be_shot
 
     def get_last_rolled_dice_values(self):
         return self.dices.last_roll_dice_values

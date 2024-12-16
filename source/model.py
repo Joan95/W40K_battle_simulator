@@ -31,6 +31,7 @@ class Model:
         self.is_warlord = is_warlord
         self.is_alive = True
         self.is_visible = True
+        self.is_wounded = False
         self.model_impact_probability_melee_attack = 0
         self.model_impact_probability_ranged_attack = 0
         self.model_potential_damage_melee_attack = 0
@@ -52,15 +53,6 @@ class Model:
             # must be saved at feel_no_pain, let's calculate the chances and add them to chance_of_defence
             chance_of_defence += (1 - base_chance_of_defence) * (MAX_THROW_D6 - (int(self.feel_no_pain) - 1)) / 6
         return chance_of_defence
-
-    def set_model_preferred_attack_style(self):
-        # First of all calculate the hit probability and the potential damage for all the weapons
-        self.get_model_weapons_hit_probability_and_damage()
-        if (self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack) > \
-                (self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack):
-            self.model_preferred_attack_style = ModelPreferredStyle.MELEE_ATTACK
-        else:
-            self.model_preferred_attack_style = ModelPreferredStyle.RANGED_ATTACK
 
     def get_description(self):
         return self.description
@@ -110,23 +102,21 @@ class Model:
     def move(self):
         print(f"{self.name} moving!")
 
-    def receive_damage(self, player_attacking, wounds):
-        log(f'[MODEL] [{self.name}] receives {wounds} wound(s)')
-        if type(wounds) == str and 'D' in wounds:
-            num_wounds = player_attacking.dices.roll_dices(wounds)
-        else:
-            num_wounds = wounds
-        try:
-            self.wounds -= num_wounds
-        except TypeError:
-            self.wounds -= int(num_wounds)
+    def receive_damage(self, dices, wounds):
+        if self.feel_no_pain:
+            log(f'[MODEL] [{self.name}] has feel no pain at {self.feel_no_pain}+')
+            dices.roll_dices('{}D6'.format(wounds))
+            for dice in dices.last_roll_dice_values:
+                if dice >= self.feel_no_pain:
+                    wounds -= 1
 
+        self.wounds -= wounds
         if self.wounds <= 0:
             self.is_alive = False
-            log(f'[MODEL] [{self.name}] has died honorably')
+            log(f'[MODEL] [{self.name}] receives {wounds} wound(s) and dies honorably')
             return True
         else:
-            log(f'[MODEL] [{self.name}] remaining wound(s) {self.wounds}')
+            log(f'[MODEL] [{self.name}] receives {wounds} wound(s). Remaining wound(s) {self.wounds}')
             return False
 
     def set_description(self):
@@ -143,6 +133,15 @@ class Model:
             description += f'{weapon.get_description()}\n'
         log(description)
         return description
+
+    def set_model_preferred_attack_style(self):
+        # First of all calculate the hit probability and the potential damage for all the weapons
+        self.get_model_weapons_hit_probability_and_damage()
+        if (self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack) > \
+                (self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack):
+            self.model_preferred_attack_style = ModelPreferredStyle.MELEE_ATTACK
+        else:
+            self.model_preferred_attack_style = ModelPreferredStyle.RANGED_ATTACK
 
     def set_model_priority_to_die(self, more_than_one):
         if self.is_warlord:

@@ -1,6 +1,5 @@
 from battlefield import get_adjacent_points
 from colorama import Fore
-from enums import AttackStrength
 from logging_handler import log
 from shapely.geometry import Polygon, Point
 
@@ -123,7 +122,7 @@ class Unit:
         else:
             self.unit_polygon = None
 
-    def get_first_model_to_die(self):
+    def get_next_model_to_die(self):
         # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
         alive_models = self.get_models_alive()
         return min(alive_models, key=lambda model: model.priority_to_die)
@@ -219,69 +218,9 @@ class Unit:
                             update_model_position(board_map, model, nearest_free_position)
 
             self.get_unit_centroid()
-        else:
-            print("No targeted enemy...")
 
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
-
-    def shoot_ranged_attacks(self, dices):
-        shooting_dict = self.get_models_ranged_attacks()
-        log(f'[UNIT] --- --- ---  {self.name} unit is shooting! --- --- ---')
-
-        for weapon in shooting_dict:
-            for target in shooting_dict[weapon]:
-                log(f'[PLAYER {self.name}] [] shooting #{shooting_dict[weapon][target]} [{weapon.name}] against '
-                    f'[{target.raw_name}]')
-                log(f'[PLAYER {self.name}] [{weapon.name}] attacks {weapon.num_attacks}')
-
-                # Get weapon number of attacks to do
-                weapon_num_attacks, weapon_strength = weapon.get_num_attacks(dices)
-                # Get the enemy unit toughness who will suffer this attack
-                enemy_toughness = target.get_unit_toughness()
-
-                if weapon_strength == enemy_toughness:
-                    weapon_attack_strength = AttackStrength.EQUAL.value
-                else:
-                    if weapon_strength > enemy_toughness:
-                        weapon_attack_strength = AttackStrength.WEAK.value
-                        if weapon_strength >= enemy_toughness * 2:
-                            weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
-                    else:
-                        weapon_attack_strength = AttackStrength.STRONG.value
-                        if weapon_strength * 2 <= enemy_toughness:
-                            weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
-
-                log(f'[PLAYER {self.name}] [{weapon.name}] attack(s) will success at {weapon_attack_strength}\'s')
-                dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
-                attacks = dices.last_roll_dice_values
-                successful_attacks = list()
-                for count, attack in enumerate(attacks, start=1):
-                    if attack >= weapon_attack_strength:
-                        successful_attacks.append(attack)
-
-                if successful_attacks:
-                    log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
-                        f'attack(s) from {successful_attacks}')
-
-                    hits = list()
-                    enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
-                                                                          weapon.armour_penetration)
-                    for count in range(len(successful_attacks)):
-                        if inactive_player.dices.roll_dices() < enemy_salvation:
-                            hits.append(inactive_player.dices.last_roll_dice_value)
-                    if hits:
-                        log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
-                        damages = list()
-                        for _ in hits:
-                            damages.append(weapon.get_damage(self.dices))
-                        log(f'Attack damages are {damages}')
-                        killed_models = inactive_player.allocate_damages(damages)
-                    else:
-                        log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
-                else:
-                    log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
-            pass
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted

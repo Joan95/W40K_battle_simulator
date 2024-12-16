@@ -29,24 +29,6 @@ class Weapon:
         self.weapon_potential_damage = self.calculate_weapon_potential_damage()
         self.target_unit = None
 
-    def attack(self, dices):
-        num_attacks = self.calculate_num_attacks(dices)
-        log(f'[WEAPON] Number of attacks that have entered: #{num_attacks} with strength {self.strength}')
-        return num_attacks
-
-    def calculate_num_attacks(self, dices):
-        num_attacks = 0
-        num_generated_attacks = dices.roll_dices(self.num_attacks)
-        log(f'[WEAPON] [{self.name}] has generated #{num_generated_attacks} attacks')
-
-        for throw in range(num_generated_attacks):
-            log(f'[WEAPON] Checking attack #{throw} out of {num_generated_attacks} against weapon\'s ballistic skill '
-                f'of {self.ballistic_skill}')
-            if dices.roll_dices() >= self.ballistic_skill:
-                num_attacks += 1
-
-        return num_attacks
-
     def calculate_weapon_hit_probability(self):
         # First we want to know the chance of success of a single dice,
         # it will be 6 - ballistic_skill (that included) / 6
@@ -59,12 +41,17 @@ class Weapon:
         return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * \
             self.get_weapon_average_raw_damage()
 
+    def get_armour_penetration(self):
+        log(f'[WEAPON] {self.name} has Armour Penetration of {self.armour_penetration}')
+        return self.armour_penetration
+
     def get_damage(self, dices):
         if isinstance(self.damage, str) and 'D' in self.damage:
-            log(f'[WEAPON] {self.name}\'s damage is {self.damage} will have to throw the dices for it')
-            damage = dices.roll_dices(self.damage)
+            log(f'[WEAPON] {self.name}\'s damage is {self.damage}. Throwing a dice for knowing the amount of damage')
+            dices.roll_dices('{}'.format(self.damage))
+            damage = dices.last_roll_dice_value
         else:
-            damage = self.num_attacks
+            damage = int(self.damage)
         log(f'[WEAPON] {self.name}\'s damage is {damage}')
         return damage
 
@@ -75,6 +62,10 @@ class Weapon:
             num_attacks = self.num_attacks
         log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
         return num_attacks, self.ballistic_skill
+
+    def get_strength(self):
+        log(f'[WEAPON] {self.name}\'s strength is {self.strength}')
+        return self.strength
 
     def get_weapon_average_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""
@@ -106,14 +97,17 @@ class MeleeWeapon(Weapon):
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
 
-    def attack(self, dices):
-        return super().attack(dices)
+    def get_armour_penetration(self):
+        return super().get_armour_penetration()
 
     def get_description(self):
         return self.description
 
     def get_num_attacks(self, dices):
         return super().get_num_attacks(dices)
+
+    def get_strength(self):
+        return super().get_strength()
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
@@ -131,14 +125,17 @@ class RangedWeapon(Weapon):
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
 
-    def attack(self, dices):
-        return super().attack(dices)
+    def get_armour_penetration(self):
+        return super().get_armour_penetration()
 
     def get_description(self):
         return self.description
 
     def get_num_attacks(self, dices):
         return super().get_num_attacks(dices)
+
+    def get_strength(self):
+        return super().get_strength()
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'

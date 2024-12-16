@@ -3,7 +3,7 @@ from battlefield import Battlefield, BoardHandle, Objective
 from logging_handler import *
 from shapely.geometry import Point
 from colorama import init, Fore
-from enums import GamePhase, PlayerRol
+from enums import AttackStrength, GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
 from database_handler import DatabaseHandler
 from player import Player
@@ -129,6 +129,7 @@ def movement_phase(active_player, inactive_player):
 
 
 def resolve_impact_roll(active_player, weapon):
+    log(f'IMPACT ROLL(s):')
     # Get weapon number of attacks to do
     log(f'[PLAYER {active_player.name}] [{weapon.name}] attacks {weapon.num_attacks}')
     weapon_num_attacks, weapon_ballistic_skill = weapon.get_num_attacks(active_player.dices)
@@ -137,84 +138,114 @@ def resolve_impact_roll(active_player, weapon):
     active_player.dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
     attacks = active_player.dices.last_roll_dice_values
     successful_attacks = list()
+    critical_attacks = 0
     for count, attack in enumerate(attacks, start=1):
         if attack >= weapon_ballistic_skill:
+            if attack == 6:
+                critical_attacks += 1
             successful_attacks.append(attack)
-    return successful_attacks
+    return successful_attacks, critical_attacks
 
 
-def resolve_wound_roll(attacks):
-    pass
+def resolve_wound_roll(active_player, attacks, weapon, enemy_unit):
+    log(f'WOUND ROLL(s):')
+    weapon_strength = weapon.get_strength()
+
+    # Get the enemy unit toughness who will suffer this attack
+    enemy_toughness = enemy_unit.get_unit_toughness()
+
+    if weapon_strength == enemy_toughness:
+        weapon_attack_strength = AttackStrength.EQUAL.value
+    else:
+        if weapon_strength > enemy_toughness:
+            weapon_attack_strength = AttackStrength.WEAK.value
+            if weapon_strength >= enemy_toughness * 2:
+                weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
+        else:
+            weapon_attack_strength = AttackStrength.STRONG.value
+            if weapon_strength * 2 <= enemy_toughness:
+                weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
+
+    log(f'[PLAYER {active_player.name}] [{weapon.name}] #{len(attacks)} attack(s) will success at '
+        f'{weapon_attack_strength}\'s')
+    active_player.dices.roll_dices(number_of_dices='{}D6'.format(len(attacks)))
+    attacks = active_player.dices.last_roll_dice_values
+    successful_wounds = list()
+    critical_wounds = 0
+    for count, attack in enumerate(attacks, start=1):
+        if attack >= weapon_attack_strength:
+            if attack == 6:
+                critical_wounds += 1
+            successful_wounds.append(attack)
+    return successful_wounds, critical_wounds
+
+
+def assign_attack(inactive_player, enemy_target):
+    log(f'Assigning attacks')
+    enemy_model = enemy_target.get_next_model_to_die()
+    log(f'[{inactive_player.name}] assigns the attack to [{enemy_model.name}]')
+    return enemy_model
+
+
+def salvation_throw(inactive_player, weapon, enemy_model):
+    model_salvation = inactive_player.calculate_model_salvation(enemy_model, weapon.get_armour_penetration())
+
+    if inactive_player.dices.roll_dices() < model_salvation:
+        log(f'[PLAYER {inactive_player.name}] Attack has not been defended, it\'s a successful wound')
+        return False
+    else:
+        log(f'[PLAYER {inactive_player.name}] Attack has been defended by [{enemy_model.name}]')
+        return True
+
+
+def allocate_damage(active_player, inactive_player, weapon, enemy_model):
+    damage = weapon.get_damage(active_player.dices)
+    return inactive_player.allocate_damage(enemy_model, damage)
 
 
 def resolve_player_attacks(active_player, inactive_player, active_player_attacks):
     log(f'Resolving attacks')
-
+    killed_models = list()
     for weapon in active_player_attacks:
         log(f'[PLAYER {active_player.name}] resolving attacks for '
             f'[{active_player_attacks[weapon]["attacker"].name}] [{weapon.name}] against '
             f'[{active_player_attacks[weapon]["target"].raw_name}]')
 
         # 1 - Impact Roll
-        successful_attacks = resolve_impact_roll(active_player, weapon)
+        successful_impacts, critical_impacts = resolve_impact_roll(active_player, weapon)
 
-        log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_attacks)} successful '
-            f'attack(s) from {successful_attacks}')
+        if successful_impacts:
+            log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_impacts)} successful '
+                f'impacts(s) from last throw {successful_impacts}, from these there are {critical_impacts} '
+                f'critical impact(s)')
 
-        # 2 - Wound Roll
-        resolve_wound_roll(successful_attacks)
+            # 2 - Wound Roll
+            enemy_target = active_player_attacks[weapon]["target"]
+            successful_attacks, critical_wounds = resolve_wound_roll(active_player, successful_impacts, weapon,
+                                                                     enemy_target)
+            if successful_attacks:
+                log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_attacks)} successful '
+                    f'attack(s) from last throw {successful_attacks}, from these there are {critical_wounds} '
+                    f'critical wound(s)')
 
-        # Get weapon number of attacks to do
-        weapon_num_attacks, weapon_strength = weapon.get_num_attacks(dices)
-        # Get the enemy unit toughness who will suffer this attack
-        enemy_toughness = target.get_unit_toughness()
+                for idx, _ in enumerate(successful_attacks, start=1):
+                    log(f'[Attack #{idx} out of {len(successful_attacks)}]')
 
-        if weapon_strength == enemy_toughness:
-            weapon_attack_strength = AttackStrength.EQUAL.value
-        else:
-            if weapon_strength > enemy_toughness:
-                weapon_attack_strength = AttackStrength.WEAK.value
-                if weapon_strength >= enemy_toughness * 2:
-                    weapon_attack_strength = AttackStrength.DOUBLE_WEAK.value
+                    # 3 - Assign attack
+                    enemy_model = assign_attack(inactive_player, enemy_target)
+
+                    # 4 - Salvation throw
+                    if not salvation_throw(inactive_player, weapon, enemy_model):
+                        # Has not saved
+                        # 5 - Allocate damage
+                        if allocate_damage(active_player, inactive_player, weapon, enemy_model):
+                            # Model has been killed
+                            killed_models.append(enemy_model)
             else:
-                weapon_attack_strength = AttackStrength.STRONG.value
-                if weapon_strength * 2 <= enemy_toughness:
-                    weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
-
-        log(f'[PLAYER {self.name}] [{weapon.name}] attack(s) will success at {weapon_attack_strength}\'s')
-        dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
-        attacks = dices.last_roll_dice_values
-        successful_attacks = list()
-        for count, attack in enumerate(attacks, start=1):
-            if attack >= weapon_attack_strength:
-                successful_attacks.append(attack)
-
-        if successful_attacks:
-            log(f'[PLAYER {self.name}] And there\'s a total of #{len(successful_attacks)} successful '
-                f'attack(s) from {successful_attacks}')
-
-            hits = list()
-            enemy_salvation = inactive_player.get_model_salvation(enemy_model_to_attack,
-                                                                  weapon.armour_penetration)
-            for count in range(len(successful_attacks)):
-                if inactive_player.dices.roll_dices() < enemy_salvation:
-                    hits.append(inactive_player.dices.last_roll_dice_value)
-            if hits:
-                log(f'[PLAYER {self.name}] It\'s been #{len(hits)} successful hits(s)')
-                damages = list()
-                for _ in hits:
-                    damages.append(weapon.get_damage(self.dices))
-                log(f'Attack damages are {damages}')
-                killed_models = inactive_player.allocate_damages(damages)
-            else:
-                log(f'[PLAYER {self.name}] Attack has been fully defended by [{enemy_model_to_attack}]')
+                log(f'[PLAYER {active_player.name}] And there\'s no successful attack... [F]')
         else:
-            log(f'[PLAYER {self.name}] Attack entire attack fails {attacks}... [F]')
-        pass
-
-    # 2 - Wound Roll
-
-    pass
+            log(f'[PLAYER {active_player.name}] And there\'s no successful impact... [F]')
+    return killed_models
 
 
 def shooting_phase(active_player, inactive_player):
@@ -230,8 +261,7 @@ def shooting_phase(active_player, inactive_player):
         # At least one model can shoot a target
         if unit_can_shoot:
             attacks = unit.get_models_ranged_attacks()
-            resolve_player_attacks(active_player, inactive_player, attacks)
-            killed_models = unit.shoot_ranged_attacks(active_player.dices)
+            killed_models = resolve_player_attacks(active_player, inactive_player, attacks)
             if killed_models:
                 for model in killed_models:
                     log(f'[REPORT] [{model.name}] has died this turn')

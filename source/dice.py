@@ -34,7 +34,7 @@ class Dices:
                 for _ in range(self.last_roll_dice_count):
                     self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-                log(f'[DICE from {self.dice_owner}] Rolling #{self.last_roll_dice_count} dice(s) of '
+                log(f'[{self.dice_owner}\'s dice(s)] Rolling #{self.last_roll_dice_count} dice(s) of '
                     f'{self.last_roll_dice_sides} sides with a '
                     f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
                     f'{self.last_roll_modifier}')
@@ -50,7 +50,7 @@ class Dices:
             for _ in range(self.last_roll_dice_count):
                 self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-            log(f'[DICE from {self.dice_owner}] Rolling #{self.last_roll_dice_count} dice(s) of '
+            log(f'[{self.dice_owner}\'s dice(s)] Rolling #{self.last_roll_dice_count} dice(s) of '
                 f'{self.last_roll_dice_sides} sides with a '
                 f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
                 f'{self.last_roll_modifier}')
