@@ -60,7 +60,7 @@ class Army:
                     # Optionally adjust the sorting criteria or add weights
                     target_candidates.sort(key=lambda x: (x[1], x[2]))
                     closest_and_weakest_enemy = target_candidates[0][0]
-                    unit.set_target(closest_and_weakest_enemy)
+                    unit.set_unit_target(closest_and_weakest_enemy)
 
 
 def get_distance(unit1, unit2):

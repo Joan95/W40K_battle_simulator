@@ -31,7 +31,7 @@ class Unit:
         self.is_engaged = False
         self.is_unit_visible = self.check_unit_visibility()
         self.has_been_deployed = False
-        self.targeted_enemy_unit_to_chase = None
+        self.targeted_enemy_unit = None
         self.unit_initial_force = len(self.models)
         self.unit_potential_damage = None
         self.unit_potential_salvation = None
@@ -102,17 +102,13 @@ class Unit:
     def get_models_alive(self):
         return [model for model in self.models if model.is_alive]
 
-    def get_models_available_for_shooting(self):
-        models_available_for_shooting = dict()
-        log(f'\t[UNIT] {self.name} retrieving models available for shooting phase ')
-
+    def get_unit_models_available_for_shooting(self):
+        models_available_for_shooting = list()
         for model in self.get_models_alive():
-            models_available_for_shooting[model] = dict()
+            models_available_for_shooting.append(model)
 
-            # Get model's weapon, they can be different between same models we will need to do so each time
-            for weapon in model.get_ranged_weapons():
-                models_available_for_shooting[model][weapon] = dict()
-                models_available_for_shooting[model][weapon]['enemy_to_shot'] = None
+        log(f'\t[UNIT] {self.name} unit models available for shooting this phase '
+            f'[{",".join([model.name for model in models_available_for_shooting])}]')
 
         return models_available_for_shooting
 
@@ -137,14 +133,14 @@ class Unit:
     def is_within_engagement_range(self, position):
         # Define an engagement range (e.g., 1 unit)
         engagement_range = 1
-        for enemy_model in self.targeted_enemy_unit_to_chase.models:
+        for enemy_model in self.targeted_enemy_unit.models:
             if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
                 return True
         return False
 
     def move_towards_target(self, board_map):
-        if not self.targeted_enemy_unit_to_chase.is_destroyed:
-            target_position = self.targeted_enemy_unit_to_chase.unit_centroid
+        if not self.targeted_enemy_unit.is_destroyed:
+            target_position = self.targeted_enemy_unit.unit_centroid
 
             for model in self.models:
                 if model.is_alive:
@@ -195,8 +191,8 @@ class Unit:
                     queue.append(point)
         return None
 
-    def set_target(self, enemy_unit):
-        self.targeted_enemy_unit_to_chase = enemy_unit
+    def set_unit_target(self, enemy_unit):
+        self.targeted_enemy_unit = enemy_unit
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted

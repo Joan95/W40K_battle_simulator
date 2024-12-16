@@ -39,7 +39,7 @@ class Model:
         self.priority_to_die = self.set_model_priority_to_die(more_than_one)
         self.ranged_attack_impact_probability = 0
         self.ranged_attack_potential_damage = 0
-        self.target_unit = None
+        self.current_target_unit = None
 
         # Calculate its score
         self.calculate_model_danger_score()

@@ -135,7 +135,7 @@ def shooting_phase(active_player, inactive_player):
     # 1 - Choose Unit for performing shoots
     for unit in units_available_for_shooting:
         # 2 - Choose targets for that unit
-        active_player.choose_target_for_unit(unit, enemy_units)
+        active_player.set_target_for_unit(unit, enemy_units)
 
         # 3 - Perform range attack
         # 4 - Repeat with very next Unit
