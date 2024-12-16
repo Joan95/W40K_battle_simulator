@@ -55,7 +55,8 @@ class Weapon:
         return hit_probability
 
     def calculate_weapon_potential_damage(self):
-        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * self.get_weapon_raw_damage()
+        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * \
+            self.get_weapon_average_raw_damage()
 
     def get_damage(self, dices):
         if isinstance(self.damage, str) and 'D' in self.damage:
@@ -84,14 +85,14 @@ class Weapon:
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
             return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a die
 
-    def get_weapon_raw_damage(self):
+    def get_weapon_average_raw_damage(self):
         damage = self.damage
         try:
             return int(damage)
         except ValueError:
             # It's a D or +something in the num_attacks characteristic
             base, extra = (damage.split('+') + [0])[:2] if '+' in damage else (damage, 0)
-            return int(base.replace('D', '')) + int(extra)
+            return int(base.replace('D', ''))/2 + int(extra)
 
     def get_weapon_range_attack(self):
         return int(self.range_attack.replace('"', ''))

@@ -135,18 +135,18 @@ def shooting_phase(active_player, inactive_player):
     # 1 - Choose Unit for performing shoots
     for unit in units_available_for_shooting:
         # 2 - Choose targets for that unit
-        active_player.set_target_for_unit(unit, enemy_units)
+        unit_can_shoot = active_player.set_target_for_unit(unit, enemy_units)
 
         # 3 - Perform range attack
-        # 4 - Repeat with very next Unit
+        # At least one model can shoot a target
+        if unit_can_shoot:
+            killed_models = active_player.shoot_ranged_attacks()
+            if killed_models:
+                for model in killed_models:
+                    log(f'[REPORT] [{model.name}] has died this turn')
+                    board.kill_model(model)
 
-    # Once attacks have been allocated shoot everything
-    killed_models = active_player.shoot_ranged_attacks(inactive_player)
-    if killed_models:
-        for model in killed_models:
-            log(f'[REPORT] [{model.name}] has died this turn')
-            board.kill_model(model)
-    pass
+        # 4 - Repeat with very next Unit
 
 
 def charge_phase(active_player, inactive_player):

@@ -93,40 +93,6 @@ class Player:
         log(f"[PLAYER {self.name}] is deploying a unit")
         self.army.deploy_unit(self.battlefield, self.deployment_zone)
 
-    def gather_all_ranged_attacks(self):
-        """
-        Gather all ranged attacks for the army, organizing them by model and weapon.
-
-        :return: A dictionary containing ranged attacks.
-        """
-        shots = dict()
-        if self.available_army_range_attacks:
-            for unit in self.available_army_range_attacks:
-                for model in self.available_army_range_attacks[unit]:
-                    for weapon in self.available_army_range_attacks[unit][model]:
-                        enemy_to_shot = self.available_army_range_attacks[unit][model][weapon].get('enemy_to_shot')
-                        if enemy_to_shot:
-                            entry_name = f"{model.name} - {weapon.name}"
-                            if entry_name not in shots:
-                                shots[entry_name] = {
-                                    'targets': [],
-                                    'attacker': model,
-                                    'weapon': weapon
-                                }
-                            # Find if the target enemy is already in the list of targets
-                            target_count = next(
-                                (tc for tc in shots[entry_name]['targets'] if tc['unit'] == enemy_to_shot), None
-                            )
-                            if target_count:
-                                target_count['count'] += 1
-                            else:
-                                shots[entry_name]['targets'].append({
-                                    'unit': enemy_to_shot,
-                                    'count': 1
-                                })
-
-        return shots
-
     def get_first_model_to_die_from_unit(self, unit):
         model_to_be_shot = unit.get_first_model_to_die()
         log(f'[PLAYER {self.name}] Sets [{model_to_be_shot.name}] from [{unit.name}] as first model to '
@@ -263,6 +229,8 @@ class Player:
         self.rol = rol
 
     def set_target_for_model(self, model, enemy_units_list):
+        at_least_one_shot_is_available = False
+
         # Clean current target unit for that model
         model.current_target_unit = None
 
@@ -270,37 +238,40 @@ class Player:
         # Find the most appropriate enemy unit to target based on proximity and weakness
         for enemy_unit in enemy_units_list:
             target_candidates.extend([
-                (enemy_unit, get_distance_between_models(model, enemy_model), enemy_unit.unit_total_score) for
+                (enemy_unit, enemy_model, get_distance_between_models(model, enemy_model), enemy_unit.unit_total_score) for
                 enemy_model in enemy_unit.get_models_alive()
             ])
 
         if target_candidates:
             # Optionally adjust the sorting criteria or add weights
-            target_candidates.sort(key=lambda x: (x[1], x[2]))
+            target_candidates.sort(key=lambda x: (x[2], x[3]))
 
         # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
-        for weapon in model.get_ranged_weapons():
-            at_least_one_shot_is_available = False
-
-            for enemy_model in targeted_enemy_unit.get_models_alive():
-                distance_to_enemy = get_distance_between_two_points(model.position, enemy_model.position)
+        for weapon in model.get_model_weapons_ranged():
+            for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
                 if weapon.get_weapon_range_attack() >= distance_to_enemy:
                     at_least_one_shot_is_available = True
+                    model.current_target_unit = enemy_unit
                     # The main enemy unit is reachable!
                     log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
                         f'will shoot {weapon.name} [{weapon.range_attack}]. '
-                        f'Target unit [{targeted_enemy_unit.name}]. '
+                        f'Target unit [{model.current_target_unit.name}]. '
                         f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
                         f'Distance to target {distance_to_enemy}"')
                     break
+        return at_least_one_shot_is_available
 
     def set_target_for_unit(self, unit, enemy_units_list):
         log(f'[PLAYER {self.name}] setting targets for unit {unit.name}')
+        unit_has_a_shot = False
         for model in unit.get_unit_models_available_for_shooting():
-            self.set_target_for_model(model, enemy_units_list)
+            if self.set_target_for_model(model, enemy_units_list):
+                unit_has_a_shot = True
+        if not unit_has_a_shot:
+            log(f'[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
+        return unit_has_a_shot
 
-    def shoot_ranged_attacks(self, inactive_player):
-        shots = self.gather_all_ranged_attacks()
+    def shoot_ranged_attacks(self):
         killed_models = list()
         if shots:
             log(f'[PLAYER {self.name}] --- --- --- SHOOTING! --- --- ---')

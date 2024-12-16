@@ -33,7 +33,8 @@ class Unit:
         self.has_been_deployed = False
         self.targeted_enemy_unit = None
         self.unit_initial_force = len(self.models)
-        self.unit_potential_damage = None
+        self.unit_potential_melee_damage = None
+        self.unit_potential_ranged_damage = None
         self.unit_potential_salvation = None
         self.unit_leadership = None
         self.unit_objective_control = None
@@ -47,24 +48,34 @@ class Unit:
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
 
-    def calculate_unit_potential_attack_damage(self):
-        self.unit_potential_damage = sum(model.model_potential_attack_damage for model in self.models if model.is_alive)
+    def calculate_unit_potential_damages(self):
+        self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
+                                               model.model_impact_probability_melee_attack
+                                               for model in self.get_models_alive()) / len(self.get_models_alive())
+        self.unit_potential_ranged_damage = sum(model.model_potential_damage_ranged_attack *
+                                                model.model_impact_probability_ranged_attack
+                                                for model in self.get_models_alive()) / len(self.get_models_alive())
 
-    def calculate_salvation_chance(self):
-        self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.models if model.is_alive)
+    def calculate_unit_salvation_chance(self):
+        self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.get_models_alive()) \
+                                        / len(self.get_models_alive())
 
     def calculate_unit_leadership(self):
-        self.unit_leadership = sum(model.leadership for model in self.models if model.is_alive) / len(self.models)
+        self.unit_leadership = sum(model.leadership for model in self.get_models_alive()) / len(self.models)
 
     def calculate_unit_objective_control(self):
         # Unit only has some objective control if it has passed the moral check, performed when unit current
         # members are lower than half of its initial force
-        self.unit_objective_control = sum(model.objective_control for model in self.models if model.is_alive and
-                                          self.moral_check_passed)
+        if self.moral_check_passed:
+            self.unit_objective_control = sum(model.objective_control for model in self.get_models_alive())
+        else:
+            self.unit_objective_control = 0
 
     def calculate_unit_survivability(self):
-        self.unit_survivability = sum(model.wounds * model.model_potential_salvation for model in self.models
-                                      if model.is_alive)
+        self.unit_survivability = (
+                                          sum(model.wounds for model in self.get_models_alive())
+                                          / len(self.get_models_alive())
+                                  ) * self.unit_potential_salvation
 
     def check_if_warlord_in_unit(self):
         return any(model.is_warlord for model in self.models)
@@ -85,7 +96,7 @@ class Unit:
 
     def form_unit_polygon(self):
         # Creates unit's polygon from models position
-        model_coordinates = [model.position for model in self.models if model.is_alive]
+        model_coordinates = [model.position for model in self.get_models_alive()]
         if len(model_coordinates) == 1:
             # There is only 1 model in the unit, return its position
             self.unit_polygon = Point(model_coordinates[0])
@@ -108,7 +119,7 @@ class Unit:
             models_available_for_shooting.append(model)
 
         log(f'\t[UNIT] {self.name} unit models available for shooting this phase '
-            f'[{",".join([model.name for model in models_available_for_shooting])}]')
+            f'[{", ".join([model.name for model in models_available_for_shooting])}]')
 
         return models_available_for_shooting
 
@@ -142,33 +153,32 @@ class Unit:
         if not self.targeted_enemy_unit.is_destroyed:
             target_position = self.targeted_enemy_unit.unit_centroid
 
-            for model in self.models:
-                if model.is_alive:
-                    if model.position:
-                        direction_x = target_position.x - model.position.x
-                        direction_y = target_position.y - model.position.y
-                        total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
+            for model in self.get_models_alive():
+                if model.position:
+                    direction_x = target_position.x - model.position.x
+                    direction_y = target_position.y - model.position.y
+                    total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
 
-                        if total_distance > 0:
-                            step = min(self.get_unit_movement(), total_distance)
-                            movement_x = step * (direction_x / total_distance)
-                            movement_y = step * (direction_y / total_distance)
-                        else:
-                            movement_x = 0
-                            movement_y = 0
+                    if total_distance > 0:
+                        step = min(self.get_unit_movement(), total_distance)
+                        movement_x = step * (direction_x / total_distance)
+                        movement_y = step * (direction_y / total_distance)
+                    else:
+                        movement_x = 0
+                        movement_y = 0
 
-                        new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
+                    new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
 
-                        new_position = board_map.clamp_position_within_boundaries(new_position)
+                    new_position = board_map.clamp_position_within_boundaries(new_position)
 
-                        if not self.is_within_engagement_range(new_position) and not \
-                                is_position_occupied(board_map, new_position):
-                            update_model_position(board_map, model, new_position)
-                        else:
-                            # Find the nearest free position if the current one is occupied or within engagement range
-                            nearest_free_position = self.find_nearest_free_position(board_map, new_position)
-                            if nearest_free_position:
-                                update_model_position(board_map, model, nearest_free_position)
+                    if not self.is_within_engagement_range(new_position) and not \
+                            is_position_occupied(board_map, new_position):
+                        update_model_position(board_map, model, new_position)
+                    else:
+                        # Find the nearest free position if the current one is occupied or within engagement range
+                        nearest_free_position = self.find_nearest_free_position(board_map, new_position)
+                        if nearest_free_position:
+                            update_model_position(board_map, model, nearest_free_position)
 
             self.get_unit_centroid()
         else:
@@ -196,14 +206,15 @@ class Unit:
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted
-        self.calculate_unit_potential_attack_damage()
-        self.calculate_salvation_chance()
+        self.calculate_unit_potential_damages()
+        self.calculate_unit_salvation_chance()
         self.calculate_unit_leadership()
         self.calculate_unit_objective_control()
         self.calculate_unit_survivability()
         # Formula for knowing how challenging a unit is by getting the potential damage it can deal and salvation
-        self.unit_total_score = (self.unit_potential_damage * 0.4 +
-                                 self.unit_potential_salvation * 0.25 +
+        self.unit_total_score = (self.unit_potential_melee_damage * 0.25 +
+                                 self.unit_potential_ranged_damage * 0.25 +
+                                 self.unit_potential_salvation * 0.2 +
                                  self.unit_leadership * 0.1 +
                                  self.unit_objective_control * 0.1 +
-                                 self.unit_survivability * 0.15)
+                                 self.unit_survivability * 0.1)
