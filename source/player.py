@@ -1,14 +1,12 @@
 import random
 from army import Army
-from unit import Unit
-from model import Model
-from weapon import MeleeWeapon, RangedWeapon
 from colorama import Fore
-from enums import PlayerRol
-import logging
-
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+from dice import Dices
+from enums import PlayerRol, WeaponType
+from logging_handler import *
+from model import Model
+from unit import Unit
+from weapon import MeleeWeapon, RangedWeapon
 
 # Constants for bold text
 bold_on = "\033[1m"
@@ -26,40 +24,79 @@ colors_list = [Fore.RED, Fore.LIGHTRED_EX, Fore.GREEN, Fore.LIGHTGREEN_EX, Fore.
                Fore.LIGHTCYAN_EX, Fore.LIGHTWHITE_EX]
 
 
+def set_color(color_name):
+    """Set faction color based on the name."""
+    color_mapping = {
+        "Red": Fore.RED,
+        "Green": Fore.GREEN
+    }
+    return color_mapping.get(color_name, Fore.RESET)
+
+
 class Player:
     def __init__(self, database, name=None, army_cfg=None, faction_color=None):
-        self.database = database
-        self.board_map = None
-        self.user_color = random.choice(colors_list)
-        self.factions_color = self.set_color(faction_color)
-        self.name = f"{self.user_color}{bold_on}{name}{bold_off}{Fore.RESET}"
         self.army_cfg = army_cfg
         self.army = Army()
-        self.faction = None
-        self.detachment = None
-        self.rol = None
-        self.deployment_zone = None
-        self.last_roll_dice = None
+        self.battlefield = None
         self.command_points = 0
+        self.deployment_zone = None
+        self.database = database
+        self.detachment = None
+        self.dices = Dices(name)
+        self.faction = None
+        self.factions_color = set_color(faction_color)
         self.players_turn = 0
+        self.rol = None
+        self.user_color = random.choice(colors_list)
+        self.name = f"{self.user_color}{bold_on}{name}{bold_off}{Fore.RESET}"
 
         self.set_faction(army_cfg.get('faction'))
         self.set_detachment(army_cfg.get('detachment'))
         self.load_army(army_cfg.get('army'))
         self.make_announcement()
 
-    @staticmethod
-    def set_color(color_name):
-        """Set faction color based on the name."""
-        color_mapping = {
-            "Red": Fore.RED,
-            "Green": Fore.GREEN
-        }
-        return color_mapping.get(color_name, Fore.RESET)
+    def allocate_damage(self, model, damage):
+        log(f'[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
+        return model.receive_damage(self.dices, damage)
 
-    def get_alive_units(self):
+    def get_available_units_for_shooting(self):
+        units_available_for_shooting = self.army.get_units_available_for_shooting()
+        log(f'[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
+            f'{", ".join([unit.name for unit in units_available_for_shooting])}')
+        return units_available_for_shooting
+
+    def calculate_model_salvation(self, model_attacked, weapon_armour_penetration):
+        raw_salvation = model_attacked.get_model_salvation()
+        salvation = raw_salvation - weapon_armour_penetration
+        invulnerable_save = model_attacked.get_invulnerable_save()
+
+        if raw_salvation > 6 and invulnerable_save:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
+                f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return invulnerable_save
+
+        if invulnerable_save and invulnerable_save < salvation:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
+                f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return invulnerable_save
+        else:
+            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+                f'own salvation of {salvation} (SV {raw_salvation}+  AP {weapon_armour_penetration})')
+            return salvation
+
+    def deploy_units(self):
+        """Deploy a unit into the player's zone."""
+        log(f"[PLAYER {self.name}] is deploying a unit")
+        self.army.deploy_unit(self.battlefield, self.deployment_zone)
+
+    def get_last_rolled_dice_values(self):
+        return self.dices.last_roll_dice_values
+
+    def get_units_alive(self):
         """Return a list of alive units."""
-        return [unit for unit in self.army.units if not unit.is_destroyed]
+        return self.army.get_units_alive()
 
     def has_units_to_deploy(self):
         """Check if there are units left to deploy."""
@@ -68,16 +105,42 @@ class Player:
     def increment_command_points(self):
         """Increase command points and notify the player."""
         self.command_points += 1
-        logging.info(f"{self.name} has gained a command point, total: {self.command_points}")
+        log(f"[PLAYER {self.name}] has gained a command point, total: {self.command_points}", True)
 
     def load_army(self, army_cfg):
         """Load the player's army based on the provided configuration."""
+        log(f'Loading army from player {self.name}')
         if not army_cfg:
-            logging.warning(f"{self.name} has no army configuration provided.")
+            log(f"[PLAYER {self.name}] has no army configuration provided.")
             return
         for unit in army_cfg.get('units', []):
             self.load_unit(unit)
-        logging.info(f"{self.name}'s army has been loaded!")
+        log(f"[PLAYER {self.name}]'s army has been loaded!")
+
+    def load_models(self, models_cfg):
+        """Load models for a unit."""
+        is_warlord = 'warlord' in models_cfg
+        amount = models_cfg.get('amount', 1)
+        more_than_one = False
+        if amount > 1:
+            more_than_one = True
+        models_list = []
+        try:
+            model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
+        except IndexError:
+            log(f'[PLAYER {self.name}] Model [{models_cfg["name"]}] has not been found in Data Base')
+            raise IndexError
+        for _ in range(amount):
+            models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
+                                               is_warlord, more_than_one))
+        return models_list
+
+    def load_model(self, model_name, model_attributes, model_weapons_cfg, is_warlord=False, more_than_one=False):
+        """Load a single model with its attributes and weapons."""
+        model_id = self.database.get_model_id_by_name(model_name)[0][0]
+        weapon_list = self.load_weapons(model_name, model_id, model_weapons_cfg)
+        model_keywords = self.database.get_model_keywords(model_name)
+        return Model(model_name, model_attributes, weapon_list, model_keywords, is_warlord, more_than_one)
 
     def load_unit(self, unit_cfg):
         """Load a unit and its models."""
@@ -86,57 +149,53 @@ class Player:
             tmp_unit = Unit(unit_cfg['unit_name'], models_list)
             self.army.add_unit_into_army(tmp_unit)
 
-    def load_models(self, models_cfg):
-        """Load models for a unit."""
-        is_warlord = 'warlord' in models_cfg
-        amount = models_cfg.get('amount', 1)
-        models_list = []
-        try:
-            model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
-            for _ in range(amount):
-                models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'], is_warlord))
-            return models_list
-        except IndexError:
-            logging.error(f"Model {models_cfg['name']} not found in the database!")
-            return []
-
-    def load_model(self, model_name, model_attributes, model_weapons_cfg, is_warlord=False):
-        """Load a single model with its attributes and weapons."""
+    def load_weapons(self, model_name, model_id, model_weapons_cfg):
         weapon_list = []
         for weapon_type, weapon_list_cfg in model_weapons_cfg.items():
             for weapon_name in weapon_list_cfg:
-                try:
-                    weapon_cls = MeleeWeapon if weapon_type == "melee" else RangedWeapon
-                    weapon_data = self.database.get_melee_weapon_by_name(
-                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
-                    )[0] if weapon_type == "melee" else self.database.get_ranged_weapon_by_name(
-                        weapon_name, self.database.get_model_id_by_name(model_name)[0][0]
-                    )[0]
-                    weapon_list.append(weapon_cls(weapon_name, weapon_data))
-                except IndexError:
-                    logging.error(f"Weapon {weapon_name} not found in the database!")
-        model_keywords = self.database.get_model_keywords(model_name)
-        return Model(model_name, model_attributes, weapon_list, model_keywords, is_warlord)
+                weapon_abilities = None
+                if weapon_type == WeaponType.MELEE.name:
+                    weapon_cls = MeleeWeapon
+                    weapon_data = self.database.get_melee_weapon_by_name(weapon_name, model_id)[0]
+                    try:
+                        weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name,
+                                                                              WeaponType.MELEE)
+                    except IndexError:
+                        log(f'[PLAYER {self.name}] Weapon {weapon_name} has no abilities')
+                else:
+                    weapon_cls = RangedWeapon
+                    weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
+                    weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name, WeaponType.RANGED)
+                weapon_list.append(weapon_cls(weapon_name, weapon_data, weapon_abilities))
+        return weapon_list
 
     def make_announcement(self):
         """Announce the player's faction and detachment."""
-        logging.info(f"{self.name} will play with {self.faction} '{self.detachment}'")
-        logging.info(f"Units: {', '.join(unit.name for unit in self.army.units)}")
+        log(f"[PLAYER {self.name}] will play with {self.faction} '{self.detachment}'")
+        log(f"Units: {', '.join(unit.name for unit in self.army.units)}")
 
     def move_units(self):
         """Move units towards their targets."""
-        for unit in self.get_alive_units():
-            logging.info(f"Moving {unit.name}")
-            unit.move_towards_target(self.board_map)
+        for unit in self.get_units_alive():
+            log(f"[PLAYER {self.name}] Moving {unit.name}")
+            unit.move_towards_target(self.battlefield)
 
-    def deploy_unit(self):
-        """Deploy a unit into the player's zone."""
-        unit_to_place = self.army.get_unit_to_place()
-        if unit_to_place:
-            logging.info(f"{self.name} is placing unit {unit_to_place.name}")
-            unit_to_place.deploy_unit_in_zone(self.board_map, self.deployment_zone)
-        else:
-            logging.warning(f"{self.name} has no units left to deploy!")
+    def roll_players_dice(self, number_of_dices=1, sides=6, show_throw=True):
+        """Roll a dice and display the result."""
+        self.dices.roll_dices(number_of_dices=number_of_dices, sides=sides)
+
+        if show_throw:
+            log_text = f'[PLAYER {self.name}] rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
+
+            for dice in self.dices.last_roll_dice_values:
+                adjective = random.choice(six_roll_dice_adjectives).upper() + " " if dice == 6 else ""
+                log_text += f"{adjective}{self.user_color}{dice}{Fore.RESET}"
+            log(log_text, show_throw)
+        return self.dices.last_roll_dice_values
+
+    def set_battlefield(self, board_map):
+        """Set the player's board map."""
+        self.battlefield = board_map
 
     def set_deployment_zone(self, zone):
         """Set the player's deployment zone."""
@@ -158,17 +217,54 @@ class Player:
         }
         role_color = role_colors.get(rol, Fore.RESET)
         role_name = "ATTACKER" if rol == PlayerRol.ATTACKER.value else "DEFENDER"
-        logging.info(f"{self.name} will be the {role_color}{role_name}{Fore.RESET}")
+        log(f"[PLAYER {self.name}] will be the {role_color}{role_name}{Fore.RESET}", True)
         self.rol = rol
 
-    def set_up_the_map(self, board_map):
-        """Set the player's board map."""
-        self.board_map = board_map
+    def set_target_for_model(self, model, enemy_units_list):
+        at_least_one_shot_is_available = False
 
-    def roll_players_dice(self, sides=6, show_throw=True):
-        """Roll a dice and display the result."""
-        self.last_roll_dice = random.randint(1, sides)
-        if show_throw:
-            adjective = random.choice(six_roll_dice_adjectives).upper() if self.last_roll_dice == 6 else ""
-            logging.info(f"{self.name} rolled a {self.user_color}{self.last_roll_dice}{Fore.RESET} {adjective}")
-        return self.last_roll_dice
+        target_candidates = list()
+        # Find the most appropriate enemy unit to target based on proximity and weakness
+        for enemy_unit in enemy_units_list:
+            target_candidates.extend([
+                (enemy_unit, enemy_model, get_distance_between_models(model, enemy_model), enemy_unit.unit_total_score) for
+                enemy_model in enemy_unit.get_models_alive()
+            ])
+
+        if target_candidates:
+            # Optionally adjust the sorting criteria or add weights
+            target_candidates.sort(key=lambda x: (x[2], x[3]))
+
+        # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
+        for weapon in model.get_model_weapons_ranged():
+            weapon.target_unit = None
+            for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
+                if weapon.get_weapon_range_attack() >= distance_to_enemy:
+                    at_least_one_shot_is_available = True
+                    weapon.target_unit = enemy_unit
+                    # The main enemy unit is reachable!
+                    log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
+                        f'will shoot {weapon.name} [{weapon.range_attack}]. '
+                        f'Target unit [{weapon.target_unit.name}]. '
+                        f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
+                        f'Distance to target {distance_to_enemy}"')
+                    break
+        return at_least_one_shot_is_available
+
+    def set_target_for_unit(self, unit, enemy_units_list):
+        log(f'[PLAYER {self.name}] setting targets for unit {unit.name}')
+        unit_has_a_shot = False
+        for model in unit.get_unit_models_available_for_shooting():
+            if self.set_target_for_model(model, enemy_units_list):
+                unit_has_a_shot = True
+        if not unit_has_a_shot:
+            log(f'[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
+        return unit_has_a_shot
+
+
+def get_distance_between_models(model1, model2):
+    pos1 = model1.position
+    pos2 = model2.position
+    if pos1 and pos2:
+        return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
+    return float('inf')

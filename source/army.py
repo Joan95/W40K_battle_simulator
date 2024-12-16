@@ -16,32 +16,51 @@ class Army:
         return self.check_units_left_to_deploy() > 0
 
     def calculate_danger_score(self):
-        self.army_total_score = sum(unit.unit_total_score for unit in self.units if not unit.is_destroyed)
+        self.army_total_score = 0
+        for unit in self.get_units_alive():
+            unit.update_unit_total_score()
+            self.army_total_score += unit.unit_total_score
 
     def check_units_left_to_deploy(self):
-        units_left_to_deploy = 0
-        for unit in self.units:
-            if not unit.has_been_deployed:
-                units_left_to_deploy += 1
-        return units_left_to_deploy
+        """Check and count units left to be deployed."""
+        return sum(1 for unit in self.units if not unit.has_been_deployed)
 
-    def get_unit_to_place(self):
+    def deploy_unit(self, battlefield, deployment_zone):
+        unit_to_deploy = self.get_unit_to_deploy()
+        unit_to_deploy.deploy_unit_in_zone(battlefield, deployment_zone)
+
+    def get_unit_to_deploy(self):
         if self.check_units_left_to_deploy() > 0:
             for unit in self.units:
                 if not unit.has_been_deployed:
                     return unit
 
+    def get_units_alive(self):
+        return [unit for unit in self.units if not unit.is_destroyed]
+
+    def get_units_available_for_shooting(self):
+        units_available_for_shooting = list()
+        for unit in self.get_units_alive():
+            if not unit.is_unit_engaged():
+                units_available_for_shooting.append(unit)
+        return units_available_for_shooting
+
     def target_enemies(self, enemy_units):
+        if not enemy_units:
+            return
+
         for unit in self.units:
-            if not unit.is_destroyed and enemy_units:
+            if not unit.is_destroyed:
                 # Find the most appropriate enemy unit to target based on proximity and weakness
                 target_candidates = [
-                    (enemy_unit, get_distance(unit, enemy_unit), enemy_unit.unit_total_score) for enemy_unit in enemy_units
+                    (enemy_unit, get_distance(unit, enemy_unit), enemy_unit.unit_total_score) for enemy_unit in
+                    enemy_units
                 ]
                 if target_candidates:
+                    # Optionally adjust the sorting criteria or add weights
                     target_candidates.sort(key=lambda x: (x[1], x[2]))
                     closest_and_weakest_enemy = target_candidates[0][0]
-                    unit.set_target(closest_and_weakest_enemy)
+                    unit.set_unit_target(closest_and_weakest_enemy)
 
 
 def get_distance(unit1, unit2):

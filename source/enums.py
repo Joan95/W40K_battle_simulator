@@ -1,12 +1,33 @@
 from enum import Enum
 
 
+class AttackStrength(Enum):
+    DOUBLE_WEAK = 2
+    WEAK = 3
+    EQUAL = 4
+    STRONG = 5
+    DOUBLE_STRONG = 6
+
+
 class GamePhase(Enum):
     COMMAND_PHASE = 1
     MOVEMENT_PHASE = 2
     SHOOTING_PHASE = 3
     CHARGE_PHASE = 4
     FIGHT_PHASE = 5
+
+
+class ModelPreferredStyle(Enum):
+    MELEE_ATTACK = 0
+    RANGED_ATTACK = 1
+
+
+class ModelPriority(Enum):
+    WARLORD = 5
+    EPIC_HERO = 4
+    CHARACTER = 3
+    UNIT_BOSS = 2
+    INFANTRY = 1
 
 
 class MovementType(Enum):

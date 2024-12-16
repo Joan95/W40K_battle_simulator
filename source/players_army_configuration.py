@@ -16,8 +16,8 @@ players_army_configuration = \
                             {
                                 'name': 'Mozrog Skragbad',
                                 'weapons': {
-                                    'ranged': ['Thump gun'],
-                                    'melee': ["Big Chompa\'s jaws", 'Gutrippa']
+                                    'RANGED': ['Thump gun'],
+                                    'MELEE': ["Big Chompa\'s jaws", 'Gutrippa']
                                 },
                                 'warlord': True
                             }
@@ -29,36 +29,116 @@ players_army_configuration = \
                             {
                                 'name': 'Beastboss',
                                 'weapons': {
-                                    'ranged': ['Shoota'],
-                                    'melee': ['Beast Snagga klaw', 'Beastchoppa']
+                                    'RANGED': ['Shoota'],
+                                    'MELEE': ['Beast Snagga klaw', 'Beastchoppa']
                                 },
                             },
                             {
                                 'name': 'Beast Snagga Boy',
                                 'amount': 8,
                                 'weapons': {
-                                    'ranged': ['Slugga'],
-                                    'melee': ['Choppa']
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Choppa']
                                 },
                             },
                             {
                                 'name': 'Beast Snagga Boy',
                                 'amount': 1,
                                 'weapons': {
-                                    'ranged': ['Thump gun'],
-                                    'melee': ['Close combat weapon']
+                                    'RANGED': ['Thump gun'],
+                                    'MELEE': ['Close combat weapon']
                                 },
                             },
                             {
                                 'name': 'Beast Snagga Nob',
                                 'amount': 1,
                                 'weapons': {
-                                    'ranged': ['Slugga'],
-                                    'melee': ['Power snappa']
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Power snappa']
                                 },
                             },
                         ]
                     },
+                    {
+                        'unit_name': 'Wurrboy + Beast Snagga Boyz',
+                        'models': [
+                            {
+                                'name': 'Wurrboy',
+                                'weapons': {
+                                    'RANGED': ['Eyez of Mork'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Boy',
+                                'amount': 8,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Choppa']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Boy',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Thump gun'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Beast Snagga Nob',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Power snappa']
+                                },
+                            },
+                        ]
+                    },
+                    {
+                        'unit_name': 'Big Mek + Boyz',
+                        'models': [
+                            {
+                                'name': 'Big Mek with Shokk Attack Gun',
+                                'weapons': {
+                                    'RANGED': ['Shokk attack gun'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Choppa']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Shoota'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Rokkit launcha'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boss Nob',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Power klaw']
+                                },
+                            },
+                        ]
+                    }
                 ],
             },
         },
@@ -73,8 +153,8 @@ players_army_configuration = \
                             {
                                 'name': 'Tech-Priest Enginseer',
                                 'weapons': {
-                                    'ranged': ['Archeotech pistol'],
-                                    'melee': ['Enginseer axe', 'Servo-arm']
+                                    'RANGED': ['Archeotech pistol'],
+                                    'MELEE': ['Enginseer axe', 'Servo-arm']
                                 },
                                 'warlord': True
                             },
@@ -82,16 +162,16 @@ players_army_configuration = \
                                 'name': 'Sergeant',
                                 'amount': 1,
                                 'weapons': {
-                                    'ranged': ['Laspistol'],
-                                    'melee': ['Close combat weapon']
+                                    'RANGED': ['Laspistol'],
+                                    'MELEE': ['Close combat weapon']
                                 },
                             },
                             {
                                 'name': 'Guardsman',
                                 'amount': 9,
                                 'weapons': {
-                                    'ranged': ['Lasgun'],
-                                    'melee': ['Close combat weapon']
+                                    'RANGED': ['Lasgun'],
+                                    'MELEE': ['Close combat weapon']
                                 },
                             },
                         ]
@@ -99,7 +179,7 @@ players_army_configuration = \
                 ],
             },
         },
-        'Warrià': {
+        'Guarrià': {
             'faction': 'Chaos Space Marines',
             'detachment': 'Veterans Of The Long War',
             'army': {
@@ -110,8 +190,8 @@ players_army_configuration = \
                             {
                                 'name': 'Abaddon the Despoiler',
                                 'weapons': {
-                                    'melee': ['Talon of Horus', "Drach\'nyen"],
-                                    'ranged': ['Talon of Horus']
+                                    'MELEE': ['Talon of Horus', "Drach\'nyen"],
+                                    'RANGED': ['Talon of Horus']
                                 },
                                 'warlord': True
                             },
@@ -119,16 +199,16 @@ players_army_configuration = \
                                 'name': 'Terminator Champion',
                                 'amount': 1,
                                 'weapons': {
-                                    'ranged': ['Combi-bolter'],
-                                    'melee': ['Accursed weapon']
+                                    'RANGED': ['Combi-bolter'],
+                                    'MELEE': ['Accursed weapon']
                                 }
                             },
                             {
                                 'name': 'Chaos Terminator',
                                 'amount': 4,
                                 'weapons': {
-                                    'ranged': ['Combi-bolter'],
-                                    'melee': ['Accursed weapon']
+                                    'RANGED': ['Combi-bolter'],
+                                    'MELEE': ['Accursed weapon']
                                 }
                             }
                         ]
