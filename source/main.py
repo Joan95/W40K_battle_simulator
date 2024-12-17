@@ -3,7 +3,7 @@ from battlefield import Battlefield, BoardHandle, Objective
 from logging_handler import *
 from shapely.geometry import Point
 from colorama import init, Fore
-from enums import AttackStrength, CommandPhaseSteps, GamePhase, PlayerRol
+from enums import AttackStrength, CommandPhaseSteps, GamePhase, MovementPhaseSteps, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
 from database_handler import DatabaseHandler
 from player import Player
@@ -25,10 +25,14 @@ def load_game_configuration():
         GamePhase.FIGHT_PHASE.value: fight_phase
     }
 
-    # Command phase functions should be set under Command Phase phase_functions
     command_phase_functions = {
         CommandPhaseSteps.COMMAND_STEP.value: command_step,
         CommandPhaseSteps.BATTLE_SHOCK_STEP.value: battle_shock_step,
+    }
+
+    movement_phase_functions = {
+        MovementPhaseSteps.MOVE_UNITS.value: move_units,
+        MovementPhaseSteps.REINFORCEMENTS.value: reinforcements,
     }
 
     # Initialize the `phases` dictionary
@@ -37,9 +41,11 @@ def load_game_configuration():
             'phase_function': phase_function
         }
 
-        # Add specific sub-functions to the Command Phase
         if phase_name == GamePhase.COMMAND_PHASE.value:
             phases[phase_name]['sub_functions'] = command_phase_functions
+
+        if phase_name == GamePhase.MOVEMENT_PHASE.value:
+            phases[phase_name]['sub_functions'] = movement_phase_functions
 
 
 def load_players_army(player_1_name, player_2_name):
@@ -127,22 +133,13 @@ def place_army_into_boardgame(turns):
         player_count += 1
 
 
-def command_step():
-    pass
-
-
-def battle_shock_step():
-    pass
-
-
-def command_phase(command_phase_sequence, active_player, inactive_player):
-    active_player.new_turn()
-    inactive_player.new_turn()
-
+def command_step(active_player, inactive_player):
     # Now increase command points for each one
     active_player.increment_command_points()
     inactive_player.increment_command_points()
 
+
+def battle_shock_step(active_player, inactive_player):
     for unit in active_player.get_units_alive():
         if len(unit.models) < unit.unit_initial_force / 2:
             log(f"Unit {unit.name} at half of its initial force, will have to throw the dices for checking its moral",
@@ -151,15 +148,32 @@ def command_phase(command_phase_sequence, active_player, inactive_player):
             unit.do_moral_check(active_player.last_roll_dice)
 
 
-def movement_phase(movement_sequence, active_player, inactive_player):
+def command_phase(command_phase_sequence, active_player, inactive_player):
+    active_player.new_turn()
+    inactive_player.new_turn()
+
+    execute_phase_steps(command_phase_sequence, active_player, inactive_player)
+
+
+def move_units(active_player, inactive_player):
     # Get enemy's alive units
     enemy_units = inactive_player.get_units_alive()
 
     for unit in active_player.army.get_units_available_for_moving():
         # Force units to target enemies based on its score
         unit.chase_enemies(enemy_units)
-    active_player.move_units()
+
     # TODO: Check whether it's worth advancing or we might want to shoot instead
+    active_player.move_units()
+
+
+def reinforcements(active_player, inactive_player):
+    pass
+
+
+def movement_phase(movement_sequence, active_player, inactive_player):
+    execute_phase_steps(movement_sequence, active_player, inactive_player)
+
     active_player.battlefield.display_board()
 
 
@@ -342,7 +356,12 @@ def execute_phase(active_player, inactive_player):
         phase_name_enum = GamePhase(phase_sequences).name.replace("_", " ").title()
         log(f"[REPORT] [TURN #{active_player.players_turn}] ----- ----- ----- [{active_player.name}] "
             f"{phase_name_enum} ----- ----- -----", True)
-        phase['phase_function'](phase_sequences, active_player, inactive_player)
+        phase['phase_function'](phases[phase_sequences], active_player, inactive_player)
+
+
+def execute_phase_steps(phase_steps, active_player, inactive_player):
+    for step in phase_steps['sub_functions']:
+        phase_steps['sub_functions'][step](active_player, inactive_player)
 
 
 mapConfig1 = BoardHandle(
@@ -362,33 +381,23 @@ if __name__ == '__main__':
         log("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!", True)
         board = Battlefield(mapConfig1)
         board.place_objectives()
-
         load_game_configuration()
-
         # Army selection: will assign
         p1, p2 = load_players_army("Shuan", "Guarrià")
-
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender
         turn_list = players_handshake(board, p1, p2)
-
         # Place all the army in the board
         place_army_into_boardgame(turn_list)
-
         # Print Boards configuration
         board.display_board()
-
         # Initiatives
         turn_list = initiatives(p1, p2)
-
         # If here all the Units have been displayed so the game can start!
         board.start_the_game()
-
         # Remove Attackers and defenders zone
         board.remove_attacker_defender_zone()
-
         board.display_board()
-
         print()
         for (game_turn, (attacker, defender)) in turn_list:
             log(f"[REPORT]\n\n\t\t----- ----- ----- ----- ----- Game TURN #{game_turn} "
