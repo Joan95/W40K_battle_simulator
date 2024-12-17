@@ -12,8 +12,8 @@ def update_model_position(board_map, model, new_position):
     """Update the model's position on the board."""
     if model.position:
         board_map.map_configuration.clear_model(model.position)
-    model.position = new_position
     board_map.map_configuration.set_model(new_position, model)
+    model.move_to(new_position)
 
 
 def is_position_occupied(board_map, position):
@@ -107,7 +107,7 @@ class Unit:
         board.deploy_unit(zone_to_deploy, self)
         self.has_been_deployed = True
         # Now that unit has been deployed, calculate its polygon
-        self.get_unit_centroid()
+        self.calculate_unit_centroid()
 
     def do_moral_check(self, value):
         pass
@@ -130,19 +130,28 @@ class Unit:
         return None
 
     def form_unit_polygon(self):
-        # Creates unit's polygon from models position
-        model_coordinates = [model.position for model in self.get_models_alive()]
+        # Creates unit's polygon from models' positions
+        model_coordinates = [
+            (model.position.x, model.position.y)
+            for model in self.get_models_alive()
+            if model.position is not None
+        ]
 
         if len(model_coordinates) == 1:
-            # There is only 1 model in the unit, return its position
+            # Single model -> Point
             self.unit_polygon = Point(model_coordinates[0])
         elif len(model_coordinates) == 2:
-            # Two models create a line instead of a polygon
-            self.unit_polygon = LineString([point for point in model_coordinates])
-        elif model_coordinates:
-            # Create a polygon (must be at least 3 points)
-            self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
+            # Two models -> LineString
+            self.unit_polygon = LineString(model_coordinates)
+        elif len(model_coordinates) >= 3:
+            # Three or more models -> Polygon
+            try:
+                self.unit_polygon = Polygon(model_coordinates)
+            except ValueError:
+                # Handle degenerate polygons (e.g., collinear points)
+                self.unit_polygon = LineString(model_coordinates)
         else:
+            # No models alive
             self.unit_polygon = None
 
     def get_next_model_to_die(self):
@@ -158,37 +167,36 @@ class Unit:
         for model in self.get_models_alive():
             for weapon in model.get_model_weapons_ranged():
                 if weapon.target_unit:
-                    if weapon not in shooting_dict:
-                        shooting_dict[weapon] = dict()
-
-                    if weapon.target_unit not in shooting_dict[weapon]:
-                        shooting_dict[weapon]['target'] = weapon.target_unit
-                        shooting_dict[weapon]['count'] = 1
-                        shooting_dict[weapon]['attacker'] = model
+                    entry_name = model.name + ' - ' + weapon.target_unit.raw_name + ' - ' + weapon.name
+                    if entry_name not in shooting_dict:
+                        shooting_dict[entry_name] = {
+                            'weapon': weapon,
+                            'target': weapon.target_unit,
+                            'count': 1,
+                            'attacker': model
+                        }
                     else:
-                        shooting_dict[weapon]['count'] += 1
+                        # Entry already in dictionary just increase the counter of attacks
+                        shooting_dict[entry_name]['count'] += 1
         return shooting_dict
 
-    def get_unit_centroid(self):
-        # Get the centroid of the unit's polygon or the position of the single model
+    def calculate_unit_centroid(self):
+        # Calculate the centroid of the unit's polygon or point
         self.form_unit_polygon()
-        polygon_or_point = self.unit_polygon
-        if isinstance(polygon_or_point, Polygon) and not polygon_or_point.is_empty:
-            centroid = polygon_or_point.centroid
-            self.unit_centroid = centroid
-        elif isinstance(polygon_or_point, Point):
-            self.unit_centroid = polygon_or_point
+        if self.unit_polygon and not self.unit_polygon.is_empty:
+            # Shapely geometries (Point, LineString, Polygon) have a .centroid property
+            self.unit_centroid = self.unit_polygon.centroid
         else:
+            # No valid geometry, set centroid to None
             self.unit_centroid = None
+
+    def get_unit_centroid(self):
+        return self.unit_centroid
 
     def get_unit_models_available_for_shooting(self):
         models_available_for_shooting = list()
         for model in self.get_models_alive():
             models_available_for_shooting.append(model)
-
-        log(f'\t\t[UNIT] {self.name} unit, models available for shooting this phase in unit: '
-            f'[{", ".join([model.name for model in models_available_for_shooting])}]')
-
         return models_available_for_shooting
 
     def get_unit_movement(self):
@@ -220,14 +228,13 @@ class Unit:
 
     def move_towards_target(self, board_map):
         if not self.targeted_enemy_unit.is_destroyed:
-            target_position = self.targeted_enemy_unit.unit_centroid
+            target_position = self.targeted_enemy_unit.get_unit_centroid()
 
             for model in self.get_models_alive():
                 if model.position:
                     direction_x = target_position.x - model.position.x
                     direction_y = target_position.y - model.position.y
                     total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
-
                     if total_distance > 0:
                         step = min(self.get_unit_movement(), total_distance)
                         movement_x = step * (direction_x / total_distance)
@@ -237,7 +244,6 @@ class Unit:
                         movement_y = 0
 
                     new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
-
                     new_position = board_map.clamp_position_within_boundaries(new_position)
 
                     if not self.is_within_engagement_range(new_position) and not \
@@ -250,7 +256,7 @@ class Unit:
                             update_model_position(board_map, model, nearest_free_position)
 
             self.has_moved = True
-            self.get_unit_centroid()
+            self.calculate_unit_centroid()
 
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
@@ -260,6 +266,8 @@ class Unit:
         self.has_moved = False
         self.has_shoot = False
         self.moral_check_passed = True
+        for model in self.models:
+            model.start_new_turn()
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted

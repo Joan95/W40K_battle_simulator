@@ -177,7 +177,7 @@ class Player:
     def move_units(self):
         """Move units towards their targets."""
         for unit in self.get_units_alive():
-            log(f"\t[PLAYER {self.name}] Moving {unit.name}")
+            log(f"\t[PLAYER {self.name}] Moving unit [{unit.name}]")
             unit.move_towards_target(self.battlefield)
 
     def new_turn(self):
@@ -244,16 +244,18 @@ class Player:
         # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
         for weapon in model.get_model_weapons_ranged():
             weapon.target_unit = None
+            weapon.target_distance = None
             for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
                 if weapon.get_weapon_range_attack() >= distance_to_enemy:
                     at_least_one_shot_is_available = True
                     weapon.target_unit = enemy_unit
+                    weapon.target_distance = distance_to_enemy
                     # The main enemy unit is reachable!
-                    log(f'\t[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
-                        f'will shoot {weapon.name} [{weapon.range_attack}]. '
-                        f'Target unit [{weapon.target_unit.name}]. '
-                        f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
-                        f'Distance to target {distance_to_enemy}"')
+                    log((f'\t[{model.name}] {int(model.position.x), int(model.position.y)} '
+                         f'will shoot {weapon.name} [{weapon.range_attack}]. '
+                         f'Model seen [{enemy_model.name}] at '
+                         f'{int(enemy_model.position.x), int(enemy_model.position.y)} [{weapon.target_unit.name}]. '
+                         f'Distance to target {distance_to_enemy}"'))
                     break
         return at_least_one_shot_is_available
 
@@ -263,9 +265,6 @@ class Player:
             if self.set_target_for_model(model, enemy_units_list):
                 unit_has_a_shot = True
                 unit.has_shoot = True
-                log(f'\t[PLAYER {self.name}] [{unit.name}] will shoot this turn!')
-        if not unit_has_a_shot:
-            log(f'\t[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
         return unit_has_a_shot
 
 

@@ -28,6 +28,7 @@ class Model:
         self.weapons = list(weapons)
 
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
+        self.has_moved = False
         self.is_warlord = is_warlord
         self.is_alive = True
         self.is_visible = True
@@ -126,8 +127,12 @@ class Model:
     def get_model_weapons_ranged(self):
         return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
 
-    def move(self):
-        print(f"{self.name} moving!")
+    def has_moved_this_turn(self):
+        return self.has_moved
+
+    def move_to(self, position):
+        self.position = position
+        self.has_moved = True
 
     def receive_damage(self, dices, wounds):
         if self.feel_no_pain:
@@ -199,3 +204,6 @@ class Model:
             else:
                 # This is boss unit basic model
                 return ModelPriority.UNIT_BOSS.value
+
+    def start_new_turn(self):
+        self.has_moved = False

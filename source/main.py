@@ -141,14 +141,17 @@ def movement_phase(active_player, inactive_player):
     active_player.battlefield.display_board()
 
 
-def resolve_impact_roll(active_player, weapon):
-    log(f'\t----- ----- ----- IMPACT ROLL(s) ----- ----- -----')
-    # Get weapon number of attacks to do
-    log(f'[PLAYER {active_player.name}] [{weapon.name}] attacks {weapon.num_attacks}')
-    weapon_num_attacks, weapon_ballistic_skill = weapon.get_num_attacks(active_player.dices)
+def resolve_impact_roll(active_player, weapon, num_shoots):
+    log(f'\t\t----- ----- ----- IMPACT ROLL(s) ----- ----- -----')
 
-    log(f'[PLAYER {active_player.name}] [{weapon.name}] attack(s) will success at {weapon_ballistic_skill}\'s')
-    active_player.dices.roll_dices(number_of_dices='{}D6'.format(weapon_num_attacks))
+    # Get weapon number of attacks to do
+    log(f'[PLAYER {active_player.name}] there are #{num_shoots} [{weapon.name}] being shoot')
+    weapon_num_attacks, weapon_ballistic_skill = weapon.get_num_attacks(active_player.dices)
+    total_attacks = num_shoots * weapon_num_attacks
+
+    log(f'[PLAYER {active_player.name}] [{weapon.name}] #{total_attacks} attack(s) will success at '
+        f'{weapon_ballistic_skill}\'s')
+    active_player.dices.roll_dices(number_of_dices='{}D6'.format(total_attacks))
     attacks = active_player.dices.last_roll_dice_values
     successful_attacks = list()
     critical_attacks = 0
@@ -161,7 +164,7 @@ def resolve_impact_roll(active_player, weapon):
 
 
 def resolve_wound_roll(active_player, attacks, weapon, enemy_unit):
-    log(f'\t----- ----- ----- WOUND ROLL(s) ----- ----- -----')
+    log(f'\t\t----- ----- ----- WOUND ROLL(s) ----- ----- -----')
     weapon_strength = weapon.get_strength()
 
     # Get the enemy unit toughness who will suffer this attack
@@ -194,7 +197,7 @@ def resolve_wound_roll(active_player, attacks, weapon, enemy_unit):
 
 
 def assign_attack(inactive_player, enemy_target):
-    log(f'\t----- ----- ----- Assigning attacks ----- ----- -----')
+    log(f'\t\t----- ----- ----- ASSIGNING ATTACKS ----- ----- -----')
     enemy_model = enemy_target.get_next_model_to_die()
     log(f'[{inactive_player.name}] assigns the attack to [{enemy_model.name}]')
     return enemy_model
@@ -212,52 +215,65 @@ def salvation_throw(inactive_player, weapon, enemy_model):
 
 
 def allocate_damage(active_player, inactive_player, weapon, enemy_model):
+    log(f'\t\t----- ----- ----- ALLOCATING DAMAGE ----- ----- -----')
     damage = weapon.get_damage(active_player.dices)
     return inactive_player.allocate_damage(enemy_model, damage)
 
 
-def resolve_player_attacks(active_player, inactive_player, active_player_attacks):
-    log(f'\t----- ----- ----- Resolving attacks ----- ----- -----')
+def resolve_player_attack(active_player, inactive_player, attack_dict):
     killed_models = list()
-    for weapon in active_player_attacks:
-        log(f'[PLAYER {active_player.name}] resolving attacks for '
-            f'[{active_player_attacks[weapon]["attacker"].name}] [{weapon.name}] against '
-            f'[{active_player_attacks[weapon]["target"].raw_name}]')
+    model = attack_dict['attacker']
+    weapon = attack_dict['weapon']
+    num_shoots = attack_dict['count']
+    enemy_target = attack_dict["target"]
+    weapon_abilities = weapon.get_abilities()
 
-        # 1 - Impact Roll
-        successful_impacts, critical_impacts = resolve_impact_roll(active_player, weapon)
+    log(f'[PLAYER {active_player.name}] resolving #{num_shoots} impact roll(s) made by '
+        f'[{model.name}] with [{weapon.name}]'
+        f'[{", ".join([ability.name[0] for ability in weapon_abilities])}] against unit '
+        f'[{enemy_target.raw_name}]')
 
-        if successful_impacts:
-            log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_impacts)} successful '
-                f'impacts(s) from last throw {successful_impacts}, from these there are {critical_impacts} '
-                f'critical impact(s)')
-
-            # 2 - Wound Roll
-            enemy_target = active_player_attacks[weapon]["target"]
-            successful_attacks, critical_wounds = resolve_wound_roll(active_player, successful_impacts, weapon,
-                                                                     enemy_target)
-            if successful_attacks:
-                log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_attacks)} successful '
-                    f'attack(s) from last throw {successful_attacks}, from these there are {critical_wounds} '
-                    f'critical wound(s)')
-
-                for idx, _ in enumerate(successful_attacks, start=1):
-                    log(f'[Attack #{idx} out of {len(successful_attacks)}]')
-
-                    # 3 - Assign attack
-                    enemy_model = assign_attack(inactive_player, enemy_target)
-
-                    # 4 - Salvation throw
-                    if not salvation_throw(inactive_player, weapon, enemy_model):
-                        # Has not saved
-                        # 5 - Allocate damage
-                        if allocate_damage(active_player, inactive_player, weapon, enemy_model):
-                            # Model has been killed
-                            killed_models.append(enemy_model)
-            else:
-                log(f'[PLAYER {active_player.name}] And there\'s no successful attack... [F]')
+    # HEAVY -> If model has not been moved this turn, +1 at impact roll
+    if 'Heavy' in [weapon_ability.name[0] for weapon_ability in weapon_abilities]:
+        if not model.has_moved_this_turn():
+            log(f'[{model.name}] did not moved this turn, so it attack applies HEAVY ability adding one to impact roll')
+            num_shoots += 1
         else:
-            log(f'[PLAYER {active_player.name}] And there\'s no successful impact... [F]')
+            log(f'[{model.name}] has moved this turn, can not apply HEAVY ability into impact roll')
+
+    # 1 - Impact Roll
+    successful_impacts, critical_impacts = resolve_impact_roll(active_player, weapon, num_shoots)
+
+    if successful_impacts:
+        log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_impacts)} successful '
+            f'impacts(s) from last throw {successful_impacts}, from these there are {critical_impacts} '
+            f'critical impact(s)')
+
+        # 2 - Wound Roll
+        successful_attacks, critical_wounds = resolve_wound_roll(active_player, successful_impacts, weapon,
+                                                                 enemy_target)
+        if successful_attacks:
+            log(f'[PLAYER {active_player.name}] And there\'s a total of #{len(successful_attacks)} successful '
+                f'attack(s) from last throw {successful_attacks}, from these there are {critical_wounds} '
+                f'critical wound(s)')
+
+            for idx, _ in enumerate(successful_attacks, start=1):
+                log(f'[Attack #{idx} out of {len(successful_attacks)}]')
+
+                # 3 - Assign attack
+                enemy_model = assign_attack(inactive_player, enemy_target)
+
+                # 4 - Salvation throw
+                if not salvation_throw(inactive_player, weapon, enemy_model):
+                    # Has not saved
+                    # 5 - Allocate damage
+                    if allocate_damage(active_player, inactive_player, weapon, enemy_model):
+                        # Model has been killed
+                        killed_models.append(enemy_model)
+        else:
+            log(f'[PLAYER {active_player.name}] And there\'s no successful attack... [F]')
+    else:
+        log(f'[PLAYER {active_player.name}] And there\'s no successful impact... [F]')
     return killed_models
 
 
@@ -267,8 +283,10 @@ def shooting_phase(active_player, inactive_player):
     log(f'[Shooting Phase #1] - Choose Unit for performing ranged attacks')
     units_available_for_shooting = active_player.get_available_units_for_shooting()
 
+    log(f'[{active_player.name}] is declaring for following unit(s) shooting phase that: ')
     # 1 - Choose Unit for performing shoots
     for unit in units_available_for_shooting:
+        log(f'\t\t----- ----- ----- UNIT DECLARATION ----- ----- -----')
         # 2 - Choose targets for that unit
         unit_can_shoot = active_player.set_target_for_unit(unit, enemy_units)
 
@@ -276,13 +294,23 @@ def shooting_phase(active_player, inactive_player):
         # At least one model can shoot a target
         if unit_can_shoot:
             attacks = unit.get_models_ranged_attacks()
-            killed_models = resolve_player_attacks(active_player, inactive_player, attacks)
-            if killed_models:
-                for model in killed_models:
-                    log(f'[REPORT] [{model.name}] has died this turn')
-                    board.kill_model(model)
+
+            for count, attack in enumerate(attacks, start=1):
+                log('')
+                log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
+                log('')
+                killed_models = list()
+                killed_models.extend(resolve_player_attack(active_player, inactive_player, attacks[attack]))
+
+                if killed_models:
+                    for model in killed_models:
+                        log(f'[KILL REPORT] [{model.name}] has died this turn')
+                        board.kill_model(model)
+        else:
+            log(f'\t[PLAYER {active_player.name}] [{unit.name}] will not shoot since it does not see anything')
 
         # 4 - Repeat with very next Unit
+        log('')
 
 
 def charge_phase(active_player, inactive_player):

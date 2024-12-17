@@ -28,6 +28,7 @@ class Weapon:
         self.weapon_hit_probability = self.calculate_weapon_hit_probability()
         self.weapon_potential_damage_per_attack = self.calculate_weapon_potential_damage()
         self.target_unit = None
+        self.target_distance = None
 
     def calculate_weapon_hit_probability(self):
         # Calculate the hit probability for each dice
@@ -84,7 +85,7 @@ class Weapon:
             num_attacks = dices.roll_dices(self.num_attacks)
         else:
             num_attacks = self.num_attacks
-        log(f'[WEAPON] {self.name} will perform #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
+        log(f'[WEAPON] A single {self.name} performs #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
         return num_attacks, self.ballistic_skill
 
     def get_strength(self):
@@ -121,6 +122,9 @@ class MeleeWeapon(Weapon):
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
 
+    def get_abilities(self):
+        return self.abilities
+
     def get_armour_penetration(self):
         return super().get_armour_penetration()
 
@@ -148,6 +152,9 @@ class RangedWeapon(Weapon):
         self.type = WeaponType.RANGED.name
         self.abilities = set_abilities(weapon_abilities)
         self.description = self.set_description()
+
+    def get_abilities(self):
+        return self.abilities
 
     def get_armour_penetration(self):
         return super().get_armour_penetration()

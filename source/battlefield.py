@@ -65,7 +65,7 @@ class BoardHandle:
         self.boardgame[int(coord.y)][int(coord.x)] = model
         model.position = coord
         model.is_alive = True
-        log(f'\t\t\tModel [{model.name}] set at position {model.position}')
+        log(f'\t\t\tModel [{model.name}] set at position {int(model.position.x), int(model.position.y)}')
 
 
 def get_random_point_in_zone(zone):
