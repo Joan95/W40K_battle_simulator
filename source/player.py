@@ -56,12 +56,12 @@ class Player:
         self.make_announcement()
 
     def allocate_damage(self, model, damage):
-        log(f'[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
+        log(f'\t[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
         return model.receive_damage(self.dices, damage)
 
     def get_available_units_for_shooting(self):
         units_available_for_shooting = self.army.get_units_available_for_shooting()
-        log(f'[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
+        log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
             f'{", ".join([unit.name for unit in units_available_for_shooting])}')
         return units_available_for_shooting
 
@@ -71,24 +71,24 @@ class Player:
         invulnerable_save = model_attacked.get_invulnerable_save()
 
         if raw_salvation > 6 and invulnerable_save:
-            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+            log(f'\t[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
                 f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
                 f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return invulnerable_save
 
         if invulnerable_save and invulnerable_save < salvation:
-            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+            log(f'\t[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
                 f'invulnerable save of {invulnerable_save} instead of having to save at {salvation} '
                 f'(SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return invulnerable_save
         else:
-            log(f'[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
+            log(f'\t[PLAYER {self.name}] reports that [{model_attacked.name}] will save at it\'s '
                 f'own salvation of {salvation} (SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return salvation
 
     def deploy_units(self):
         """Deploy a unit into the player's zone."""
-        log(f"[PLAYER {self.name}] is deploying a unit")
+        log(f"\t[PLAYER {self.name}] is deploying a unit")
         self.army.deploy_unit(self.battlefield, self.deployment_zone)
 
     def get_last_rolled_dice_values(self):
@@ -105,17 +105,17 @@ class Player:
     def increment_command_points(self):
         """Increase command points and notify the player."""
         self.command_points += 1
-        log(f"[PLAYER {self.name}] has gained a command point, total: {self.command_points}", True)
+        log(f"\t[PLAYER {self.name}] has gained a command point, total: {self.command_points}", True)
 
     def load_army(self, army_cfg):
         """Load the player's army based on the provided configuration."""
         log(f'Loading army from player {self.name}')
         if not army_cfg:
-            log(f"[PLAYER {self.name}] has no army configuration provided.")
+            log(f"\t[PLAYER {self.name}] has no army configuration provided.")
             return
         for unit in army_cfg.get('units', []):
             self.load_unit(unit)
-        log(f"[PLAYER {self.name}]'s army has been loaded!")
+        log(f"\t[PLAYER {self.name}]'s army has been loaded!")
 
     def load_models(self, models_cfg):
         """Load models for a unit."""
@@ -128,7 +128,7 @@ class Player:
         try:
             model_attributes = self.database.get_model_by_name(models_cfg['name'])[0]
         except IndexError:
-            log(f'[PLAYER {self.name}] Model [{models_cfg["name"]}] has not been found in Data Base')
+            log(f'\t[PLAYER {self.name}] Model [{models_cfg["name"]}] has not been found in Data Base')
             raise IndexError
         for _ in range(amount):
             models_list.append(self.load_model(models_cfg['name'], model_attributes, models_cfg['weapons'],
@@ -161,7 +161,7 @@ class Player:
                         weapon_abilities = self.database.get_weapon_abilities(model_name, weapon_name,
                                                                               WeaponType.MELEE)
                     except IndexError:
-                        log(f'[PLAYER {self.name}] Weapon {weapon_name} has no abilities')
+                        log(f'\t[PLAYER {self.name}] Weapon {weapon_name} has no abilities')
                 else:
                     weapon_cls = RangedWeapon
                     weapon_data = self.database.get_ranged_weapon_by_name(weapon_name, model_id)[0]
@@ -171,21 +171,27 @@ class Player:
 
     def make_announcement(self):
         """Announce the player's faction and detachment."""
-        log(f"[PLAYER {self.name}] will play with {self.faction} '{self.detachment}'")
-        log(f"Units: {', '.join(unit.name for unit in self.army.units)}")
+        log(f"\t[PLAYER {self.name}] will play with {self.faction} '{self.detachment}'")
+        log(f"\t[PLAYER {self.name}] Units used: [{', '.join(unit.name for unit in self.army.units)}]")
 
     def move_units(self):
         """Move units towards their targets."""
         for unit in self.get_units_alive():
-            log(f"[PLAYER {self.name}] Moving {unit.name}")
+            log(f"\t[PLAYER {self.name}] Moving {unit.name}")
             unit.move_towards_target(self.battlefield)
+
+    def new_turn(self):
+        # Update danger score
+        self.army.calculate_danger_score()
+        for unit in self.army.units:
+            unit.start_new_turn()
 
     def roll_players_dice(self, number_of_dices=1, sides=6, show_throw=True):
         """Roll a dice and display the result."""
         self.dices.roll_dices(number_of_dices=number_of_dices, sides=sides)
 
         if show_throw:
-            log_text = f'[PLAYER {self.name}] rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
+            log_text = f'\t[PLAYER {self.name}] rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
 
             for dice in self.dices.last_roll_dice_values:
                 adjective = random.choice(six_roll_dice_adjectives).upper() + " " if dice == 6 else ""
@@ -217,7 +223,7 @@ class Player:
         }
         role_color = role_colors.get(rol, Fore.RESET)
         role_name = "ATTACKER" if rol == PlayerRol.ATTACKER.value else "DEFENDER"
-        log(f"[PLAYER {self.name}] will be the {role_color}{role_name}{Fore.RESET}", True)
+        log(f"\t[PLAYER {self.name}] will be the {role_color}{role_name}{Fore.RESET}", True)
         self.rol = rol
 
     def set_target_for_model(self, model, enemy_units_list):
@@ -243,7 +249,7 @@ class Player:
                     at_least_one_shot_is_available = True
                     weapon.target_unit = enemy_unit
                     # The main enemy unit is reachable!
-                    log(f'[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
+                    log(f'\t[PLAYER {self.name}] declares:\n\t\t>> {model.name} [{model.position}] '
                         f'will shoot {weapon.name} [{weapon.range_attack}]. '
                         f'Target unit [{weapon.target_unit.name}]. '
                         f'Model seen [{enemy_model.name}] at [{enemy_model.position}]. '
@@ -252,13 +258,14 @@ class Player:
         return at_least_one_shot_is_available
 
     def set_target_for_unit(self, unit, enemy_units_list):
-        log(f'[PLAYER {self.name}] setting targets for unit {unit.name}')
         unit_has_a_shot = False
         for model in unit.get_unit_models_available_for_shooting():
             if self.set_target_for_model(model, enemy_units_list):
                 unit_has_a_shot = True
+                unit.has_shoot = True
+                log(f'\t[PLAYER {self.name}] [{unit.name}] will shoot this turn!')
         if not unit_has_a_shot:
-            log(f'[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
+            log(f'\t[PLAYER {self.name}] [{unit.name}] will not shoot since it does not see anything')
         return unit_has_a_shot
 
 

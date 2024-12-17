@@ -38,8 +38,14 @@ class Army:
     def get_units_alive(self):
         return [unit for unit in self.units if not unit.is_destroyed]
 
+    def get_units_available_for_advancing(self):
+        return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
+
+    def get_units_available_for_charging(self):
+        return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged() and not unit.has_unit_advanced()]
+
     def get_units_available_for_moving(self):
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
 
     def get_units_available_for_shooting(self):
-        return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
+        return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged() and not unit.has_unit_advanced()]

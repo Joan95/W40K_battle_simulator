@@ -48,7 +48,8 @@ def players_handshake(board_map, player_1, player_2):
     player_1.set_battlefield(board_map)
     player_2.set_battlefield(board_map)
     # Roll for set up the attacker and the defender
-    log("[>>] - Setting up the attacker and the defender")
+    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Setting up the ATTACKER and the DEFENDER "
+        "----- ----- ----- ----- -----")
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
@@ -62,15 +63,23 @@ def players_handshake(board_map, player_1, player_2):
         player_1.set_deployment_zone(board_map.map_configuration.attacker_zone)
         player_2.set_rol(PlayerRol.DEFENDER.value)
         player_2.set_deployment_zone(board_map.map_configuration.defender_zone)
+        players_turn = (player_1, player_2)
     else:
         player_1.set_rol(PlayerRol.DEFENDER.value)
         player_1.set_deployment_zone(board_map.map_configuration.defender_zone)
         player_2.set_rol(PlayerRol.ATTACKER.value)
         player_2.set_deployment_zone(board_map.map_configuration.attacker_zone)
+        players_turn = (player_2, player_1)
+
+    turns = list()
+    for x in range(1, 6):
+        turns.append([x, players_turn])
+    return turns
 
 
 def initiatives(player_1, player_2):
-    log("[>>] - Rolling dices for deciding initiatives")
+    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Deciding INITIATIVES for each PLAYER "
+        "----- ----- ----- ----- -----")
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
@@ -80,10 +89,10 @@ def initiatives(player_1, player_2):
         player_2.roll_players_dice()
 
     if player_1.get_last_rolled_dice_values()[0] > player_2.get_last_rolled_dice_values()[0]:
-        log(f"\t{player_1.name} will go first!", True)
+        log(f"[REPORT] {player_1.name} will go first!", True)
         players_turn = (player_1, player_2)
     else:
-        log(f"\t{player_2.name} will go first!", True)
+        log(f"[REPORT] {player_2.name} will go first!", True)
         players_turn = (player_2, player_1)
 
     turns = list()
@@ -93,6 +102,8 @@ def initiatives(player_1, player_2):
 
 
 def place_army_into_boardgame(turns):
+    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Deploying ARMY into the BATTLEFIELD "
+        "----- ----- ----- ----- -----")
     player_count = 0
     players = turns[0][1]
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
@@ -103,9 +114,8 @@ def place_army_into_boardgame(turns):
 
 
 def command_phase(active_player, inactive_player):
-    # Calculate current army score for both players
-    active_player.army.calculate_danger_score()
-    inactive_player.army.calculate_danger_score()
+    active_player.new_turn()
+    inactive_player.new_turn()
 
     # Now increase command points for each one
     active_player.increment_command_points()
@@ -127,11 +137,12 @@ def movement_phase(active_player, inactive_player):
         # Force units to target enemies based on its score
         unit.chase_enemies(enemy_units)
     active_player.move_units()
+    # TODO: Check whether it's worth advancing or we might want to shoot instead
     active_player.battlefield.display_board()
 
 
 def resolve_impact_roll(active_player, weapon):
-    log(f'IMPACT ROLL(s):')
+    log(f'\t----- ----- ----- IMPACT ROLL(s) ----- ----- -----')
     # Get weapon number of attacks to do
     log(f'[PLAYER {active_player.name}] [{weapon.name}] attacks {weapon.num_attacks}')
     weapon_num_attacks, weapon_ballistic_skill = weapon.get_num_attacks(active_player.dices)
@@ -150,7 +161,7 @@ def resolve_impact_roll(active_player, weapon):
 
 
 def resolve_wound_roll(active_player, attacks, weapon, enemy_unit):
-    log(f'WOUND ROLL(s):')
+    log(f'\t----- ----- ----- WOUND ROLL(s) ----- ----- -----')
     weapon_strength = weapon.get_strength()
 
     # Get the enemy unit toughness who will suffer this attack
@@ -183,7 +194,7 @@ def resolve_wound_roll(active_player, attacks, weapon, enemy_unit):
 
 
 def assign_attack(inactive_player, enemy_target):
-    log(f'Assigning attacks')
+    log(f'\t----- ----- ----- Assigning attacks ----- ----- -----')
     enemy_model = enemy_target.get_next_model_to_die()
     log(f'[{inactive_player.name}] assigns the attack to [{enemy_model.name}]')
     return enemy_model
@@ -206,7 +217,7 @@ def allocate_damage(active_player, inactive_player, weapon, enemy_model):
 
 
 def resolve_player_attacks(active_player, inactive_player, active_player_attacks):
-    log(f'Resolving attacks')
+    log(f'\t----- ----- ----- Resolving attacks ----- ----- -----')
     killed_models = list()
     for weapon in active_player_attacks:
         log(f'[PLAYER {active_player.name}] resolving attacks for '
@@ -252,6 +263,8 @@ def resolve_player_attacks(active_player, inactive_player, active_player_attacks
 
 def shooting_phase(active_player, inactive_player):
     enemy_units = inactive_player.get_units_alive()
+
+    log(f'[Shooting Phase #1] - Choose Unit for performing ranged attacks')
     units_available_for_shooting = active_player.get_available_units_for_shooting()
 
     # 1 - Choose Unit for performing shoots
@@ -284,7 +297,8 @@ def execute_phase(active_player, inactive_player):
     for phase_sequence in phases:
         phase = phases[phase_sequence]
         phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
-        log(f"\t[{active_player.players_turn}] >> {active_player.name} {phase_name_enum}", True)
+        log(f"[REPORT] [TURN #{active_player.players_turn}] ----- ----- ----- [{active_player.name}] "
+            f"{phase_name_enum} ----- ----- -----", True)
         phase['phase_function'](active_player, inactive_player)
 
 
@@ -313,16 +327,16 @@ if __name__ == '__main__':
 
         # Players Handshake: configuration of factions, here will be selected which factions will fight
         # choosing which one will be the attacker and which one will be the defender
-        players_handshake(board, p1, p2)
+        turn_list = players_handshake(board, p1, p2)
 
-        # Initiatives
-        turn_list = initiatives(p1, p2)
+        # Place all the army in the board
+        place_army_into_boardgame(turn_list)
 
         # Print Boards configuration
         board.display_board()
 
-        # Place all the army in the board
-        place_army_into_boardgame(turn_list)
+        # Initiatives
+        turn_list = initiatives(p1, p2)
 
         # If here all the Units have been displayed so the game can start!
         board.start_the_game()
@@ -334,7 +348,9 @@ if __name__ == '__main__':
 
         print()
         for (game_turn, (attacker, defender)) in turn_list:
-            log(f"\t{Fore.LIGHTYELLOW_EX}Game turn [{game_turn}]{Fore.RESET}", True)
+            log(f"[REPORT]\n\n\t\t----- ----- ----- ----- ----- Game TURN #{game_turn} "
+                "----- ----- ----- ----- -----")
+            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [#{game_turn}]{Fore.RESET}")
             attacker.players_turn = game_turn
             defender.players_turn = game_turn
 
@@ -344,5 +360,6 @@ if __name__ == '__main__':
             execute_phase(defender, attacker)
             print()
 
+        board.display_board()
     except KeyboardInterrupt:
         pass

@@ -1,7 +1,7 @@
 from battlefield import get_adjacent_points
 from colorama import Fore
 from logging_handler import log
-from shapely.geometry import Polygon, Point
+from shapely.geometry import LineString, Polygon, Point
 
 # Constants for bold text
 BOLD_ON = "\033[1m"
@@ -31,6 +31,9 @@ class Unit:
         self.is_engaged = False
         self.is_unit_visible = self.check_unit_visibility()
         self.has_been_deployed = False
+        self.has_advanced = False
+        self.has_moved = False
+        self.has_shoot = False
         self.targeted_enemy_unit = None
         self.unit_centroid = None
         self.unit_initial_force = len(self.models)
@@ -100,7 +103,7 @@ class Unit:
         return is_visible
 
     def deploy_unit_in_zone(self, board, zone_to_deploy):
-        log(f'\t[UNIT] Deploying [{self.raw_name}]')
+        log(f'\t\t[UNIT] Deploying [{self.raw_name}]')
         board.deploy_unit(zone_to_deploy, self)
         self.has_been_deployed = True
         # Now that unit has been deployed, calculate its polygon
@@ -129,14 +132,16 @@ class Unit:
     def form_unit_polygon(self):
         # Creates unit's polygon from models position
         model_coordinates = [model.position for model in self.get_models_alive()]
+
         if len(model_coordinates) == 1:
             # There is only 1 model in the unit, return its position
             self.unit_polygon = Point(model_coordinates[0])
+        elif len(model_coordinates) == 2:
+            # Two models create a line instead of a polygon
+            self.unit_polygon = LineString([point for point in model_coordinates])
         elif model_coordinates:
-            try:
-                self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
-            except ValueError:
-                pass
+            # Create a polygon (must be at least 3 points)
+            self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
         else:
             self.unit_polygon = None
 
@@ -181,7 +186,7 @@ class Unit:
         for model in self.get_models_alive():
             models_available_for_shooting.append(model)
 
-        log(f'\t[UNIT] {self.name} unit models available for shooting this phase '
+        log(f'\t\t[UNIT] {self.name} unit, models available for shooting this phase in unit: '
             f'[{", ".join([model.name for model in models_available_for_shooting])}]')
 
         return models_available_for_shooting
@@ -193,8 +198,14 @@ class Unit:
         return self.unit_threat_level
 
     def get_unit_toughness(self):
-        log(f'\t[UNIT] Checking unit\'s toughness')
+        log(f'\t\t[UNIT] Checking unit\'s toughness')
         return self.models[0].get_model_toughness()
+
+    def has_unit_advanced(self):
+        return self.has_advanced
+
+    def has_unit_shoot(self):
+        return self.has_shoot
 
     def is_unit_engaged(self):
         return self.is_engaged
@@ -238,10 +249,17 @@ class Unit:
                         if nearest_free_position:
                             update_model_position(board_map, model, nearest_free_position)
 
+            self.has_moved = True
             self.get_unit_centroid()
 
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
+
+    def start_new_turn(self):
+        self.has_advanced = False
+        self.has_moved = False
+        self.has_shoot = False
+        self.moral_check_passed = True
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted
