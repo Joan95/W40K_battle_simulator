@@ -20,6 +20,7 @@ class GamePhase(Enum):
 class ModelPreferredStyle(Enum):
     MELEE_ATTACK = 0
     RANGED_ATTACK = 1
+    BALANCED_ATTACK = 2
 
 
 class ModelPriority(Enum):

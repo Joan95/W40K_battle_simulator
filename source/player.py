@@ -227,12 +227,12 @@ class Player:
         # Find the most appropriate enemy unit to target based on proximity and weakness
         for enemy_unit in enemy_units_list:
             target_candidates.extend([
-                (enemy_unit, enemy_model, get_distance_between_models(model, enemy_model), enemy_unit.unit_total_score) for
-                enemy_model in enemy_unit.get_models_alive()
+                (enemy_unit, enemy_model, get_distance_between_models(model, enemy_model), enemy_unit.unit_threat_level)
+                for enemy_model in enemy_unit.get_models_alive()
             ])
 
         if target_candidates:
-            # Optionally adjust the sorting criteria or add weights
+            # Prioritize targets based on calculated priority
             target_candidates.sort(key=lambda x: (x[2], x[3]))
 
         # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit

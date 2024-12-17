@@ -32,17 +32,17 @@ class Unit:
         self.is_unit_visible = self.check_unit_visibility()
         self.has_been_deployed = False
         self.targeted_enemy_unit = None
+        self.unit_centroid = None
         self.unit_initial_force = len(self.models)
+        self.unit_leadership = None
+        self.unit_polygon = None
         self.unit_potential_melee_damage = None
         self.unit_potential_ranged_damage = None
         self.unit_potential_salvation = None
-        self.unit_leadership = None
         self.unit_objective_control = None
         self.unit_survivability = None
-        self.unit_total_score = None
-        self.unit_polygon = None
-        self.unit_centroid = None
-        # Calculate all the unit attributes
+        self.unit_threat_level = None
+
         self.update_unit_total_score()
 
         if self.is_warlord_in_the_unit:
@@ -76,6 +76,21 @@ class Unit:
                                           sum(model.wounds for model in self.get_models_alive())
                                           / len(self.get_models_alive())
                                   ) * self.unit_potential_salvation
+
+    def chase_enemies(self, enemy_units):
+        if not enemy_units:
+            return
+
+        # Find the most appropriate enemy unit to target based on proximity and weakness
+        target_candidates = [
+            (enemy_unit, get_distance(self, enemy_unit), enemy_unit.unit_threat_level) for enemy_unit in
+            enemy_units
+        ]
+        if target_candidates:
+            # Optionally adjust the sorting criteria or add weights
+            target_candidates.sort(key=lambda x: (x[1], x[2]))
+            closest_and_weakest_enemy = target_candidates[0][0]
+            self.set_unit_target(closest_and_weakest_enemy)
 
     def check_if_warlord_in_unit(self):
         return any(model.is_warlord for model in self.models)
@@ -118,7 +133,10 @@ class Unit:
             # There is only 1 model in the unit, return its position
             self.unit_polygon = Point(model_coordinates[0])
         elif model_coordinates:
-            self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
+            try:
+                self.unit_polygon = Polygon([(point.x, point.y) for point in model_coordinates])
+            except ValueError:
+                pass
         else:
             self.unit_polygon = None
 
@@ -146,16 +164,6 @@ class Unit:
                         shooting_dict[weapon]['count'] += 1
         return shooting_dict
 
-    def get_unit_models_available_for_shooting(self):
-        models_available_for_shooting = list()
-        for model in self.get_models_alive():
-            models_available_for_shooting.append(model)
-
-        log(f'\t[UNIT] {self.name} unit models available for shooting this phase '
-            f'[{", ".join([model.name for model in models_available_for_shooting])}]')
-
-        return models_available_for_shooting
-
     def get_unit_centroid(self):
         # Get the centroid of the unit's polygon or the position of the single model
         self.form_unit_polygon()
@@ -168,8 +176,21 @@ class Unit:
         else:
             self.unit_centroid = None
 
+    def get_unit_models_available_for_shooting(self):
+        models_available_for_shooting = list()
+        for model in self.get_models_alive():
+            models_available_for_shooting.append(model)
+
+        log(f'\t[UNIT] {self.name} unit models available for shooting this phase '
+            f'[{", ".join([model.name for model in models_available_for_shooting])}]')
+
+        return models_available_for_shooting
+
     def get_unit_movement(self):
         return int(self.models[0].movement.replace('"', ''))
+
+    def get_unit_threat_level(self):
+        return self.unit_threat_level
 
     def get_unit_toughness(self):
         log(f'\t[UNIT] Checking unit\'s toughness')
@@ -230,9 +251,22 @@ class Unit:
         self.calculate_unit_objective_control()
         self.calculate_unit_survivability()
         # Formula for knowing how challenging a unit is by getting the potential damage it can deal and salvation
-        self.unit_total_score = (self.unit_potential_melee_damage * 0.25 +
-                                 self.unit_potential_ranged_damage * 0.25 +
-                                 self.unit_potential_salvation * 0.2 +
-                                 self.unit_leadership * 0.1 +
-                                 self.unit_objective_control * 0.1 +
-                                 self.unit_survivability * 0.1)
+        self.unit_threat_level = (self.unit_potential_melee_damage * 0.25 +
+                                  self.unit_potential_ranged_damage * 0.25 +
+                                  self.unit_potential_salvation * 0.2 +
+                                  self.unit_leadership * 0.1 +
+                                  self.unit_objective_control * 0.1 +
+                                  self.unit_survivability * 0.1)
+        # Warlord multiplier
+        warlord_multiplier = 1.5 if self.is_warlord_in_the_unit else 1.0
+
+        # Set threat level
+        self.unit_threat_level = self.unit_threat_level * warlord_multiplier
+
+
+def get_distance(unit1, unit2):
+    pos1 = unit1.models[0].position
+    pos2 = unit2.models[0].position
+    if pos1 and pos2:
+        return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
+    return float('inf')

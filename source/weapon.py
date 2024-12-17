@@ -26,20 +26,44 @@ class Weapon:
         self.armour_penetration = attributes_tuple[4]
         self.damage = attributes_tuple[5]
         self.weapon_hit_probability = self.calculate_weapon_hit_probability()
-        self.weapon_potential_damage = self.calculate_weapon_potential_damage()
+        self.weapon_potential_damage_per_attack = self.calculate_weapon_potential_damage()
         self.target_unit = None
 
     def calculate_weapon_hit_probability(self):
-        # First we want to know the chance of success of a single dice,
-        # it will be 6 - ballistic_skill (that included) / 6
-        # And all this will be ^ to num of attacks from that weapon
-        hit_probability_single_dice = (MAX_THROW_D6 - (int(self.ballistic_skill) - 1)) / 6
-        hit_probability = hit_probability_single_dice ** self.get_weapon_average_num_attacks()
-        return hit_probability
+        # Calculate the hit probability for each dice
+        hit_probability_single_dice = (MAX_THROW_D6 - (self.ballistic_skill - 1)) / 6
+        # Account for the number of attacks
+        total_hit_probability = 1 - (1 - hit_probability_single_dice) ** self.get_weapon_max_num_attacks()
+
+        log(f'[WEAPON] [{self.name}] hit probability for one attack: {hit_probability_single_dice * 100:.2f}%')
+        log(f'[WEAPON] [{self.name}] hit probability for {self.num_attacks} attacks: '
+            f'{total_hit_probability * 100:.2f}%')
+        return total_hit_probability
 
     def calculate_weapon_potential_damage(self):
-        return self.weapon_hit_probability * self.get_weapon_average_num_attacks() * \
-            self.get_weapon_average_raw_damage()
+        if isinstance(self.damage, str) and 'D' in self.damage:
+            # Split the string into base (number of dice) and extra (sides of the dice)
+            parts = self.damage.split('D')
+
+            # If the base is empty, it means we only have something like "D6", so set base damage to 1
+            base_damage = int(parts[0]) if parts[0] else 1  # Default base damage is 1 if empty
+
+            # The extra part contains the sides of the dice, default to 6 if not specified
+            sides = int(parts[1]) if len(parts) > 1 else 6  # Damage dice sides (D6 by default)
+
+            # Calculate the average damage per die
+            average_damage = base_damage * (sides + 1) / 2  # Average roll per die
+
+            # If there's a modifier (e.g., +1), apply it to the damage
+            if '+' in self.damage:
+                modifier = int(self.damage.split('+')[1])
+                average_damage += modifier
+        else:
+            # If the damage is a fixed number (e.g., "4"), just use it directly
+            average_damage = int(self.damage)
+
+        log(f'[WEAPON] [{self.name}] potential damage: {average_damage} per attack')
+        return average_damage
 
     def get_armour_penetration(self):
         log(f'[WEAPON] {self.name} has Armour Penetration of {self.armour_penetration}')
@@ -67,7 +91,7 @@ class Weapon:
         log(f'[WEAPON] {self.name}\'s strength is {self.strength}')
         return self.strength
 
-    def get_weapon_average_num_attacks(self):
+    def get_weapon_max_num_attacks(self):
         """Retrieve the number of attacks for the weapon."""
         attacks = self.num_attacks
         try:
@@ -75,7 +99,7 @@ class Weapon:
         except ValueError:
             # It's a D or +something in the num_attacks characteristic
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
-            return int(base.replace('D', ''))/2 + int(extra)    # Do the average if it is a die
+            return int(base.replace('D', '')) + int(extra)    # Do the average if it is a die
 
     def get_weapon_average_raw_damage(self):
         damage = self.damage

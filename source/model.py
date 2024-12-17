@@ -34,10 +34,12 @@ class Model:
         self.is_wounded = False
         self.model_impact_probability_melee_attack = 0
         self.model_impact_probability_ranged_attack = 0
+        self.model_melee_score = 0
         self.model_potential_damage_melee_attack = 0
         self.model_potential_damage_ranged_attack = 0
         self.model_potential_salvation = self.calculate_model_defence_score()
         self.model_preferred_attack_style = None
+        self.model_ranged_score = 0
         self.position = None
         self.priority_to_die = self.set_model_priority_to_die(more_than_one)
 
@@ -49,8 +51,7 @@ class Model:
         base_chance_of_defence = (MAX_THROW_D6 - (int(self.salvation) - 1)) / 6
         chance_of_defence = base_chance_of_defence
         if self.feel_no_pain:
-            # Now there's a base_chance_of_defence possibilities to save, the rest 1 - base_chance_of_defence
-            # must be saved at feel_no_pain, let's calculate the chances and add them to chance_of_defence
+            # If there's a chance to ignore damage with "Feel No Pain"
             chance_of_defence += (1 - base_chance_of_defence) * (MAX_THROW_D6 - (int(self.feel_no_pain) - 1)) / 6
         return chance_of_defence
 
@@ -62,21 +63,47 @@ class Model:
 
     def get_model_melee_weapons_hit_probability_and_damage(self):
         melee_weapons = self.get_model_weapons_melee()
-        for weapon in melee_weapons:
-            self.model_impact_probability_melee_attack += weapon.weapon_hit_probability
-            self.model_potential_damage_melee_attack += weapon.weapon_potential_damage
+        total_melee_hit_probability = 0
+        total_melee_damage = 0
 
-        if melee_weapons:
-            self.model_impact_probability_melee_attack /= len(melee_weapons)
+        if not melee_weapons:
+            self.model_impact_probability_melee_attack = 0
+            self.model_potential_damage_melee_attack = 0
+            return
+
+        for weapon in melee_weapons:
+            num_attacks = weapon.get_weapon_max_num_attacks()
+            # Cumulative hit probability: Chance of at least one hit over num_attacks
+            total_melee_hit_probability += 1 - (1 - weapon.weapon_hit_probability) ** num_attacks
+            # Cumulative damage: number of attacks * average damage per attack
+            total_melee_damage += weapon.weapon_potential_damage_per_attack * num_attacks
+
+        # Average the cumulative hit probability across all weapons
+        self.model_impact_probability_melee_attack = total_melee_hit_probability / len(melee_weapons)
+        # Average the total damage across all weapons
+        self.model_potential_damage_melee_attack = total_melee_damage / len(melee_weapons)
 
     def get_model_ranged_weapons_hit_probability_and_damage(self):
         ranged_weapons = self.get_model_weapons_ranged()
-        for weapon in ranged_weapons:
-            self.model_impact_probability_ranged_attack += weapon.weapon_hit_probability
-            self.model_potential_damage_ranged_attack += weapon.weapon_potential_damage
+        total_ranged_hit_probability = 0
+        total_ranged_damage = 0
 
-        if ranged_weapons:
-            self.model_impact_probability_ranged_attack /= len(ranged_weapons)
+        if not ranged_weapons:
+            self.model_impact_probability_ranged_attack = 0
+            self.model_potential_damage_ranged_attack = 0
+            return
+
+        for weapon in ranged_weapons:
+            num_attacks = weapon.get_weapon_max_num_attacks()
+            # Cumulative hit probability: Chance of at least one hit over num_attacks
+            total_ranged_hit_probability += 1 - (1 - weapon.weapon_hit_probability) ** num_attacks
+            # Cumulative damage: number of attacks * average damage per attack
+            total_ranged_damage += weapon.weapon_potential_damage_per_attack * num_attacks
+
+        # Average the cumulative hit probability across all ranged weapons
+        self.model_impact_probability_ranged_attack = total_ranged_hit_probability / len(ranged_weapons)
+        # Average the total damage across all ranged weapons
+        self.model_potential_damage_ranged_attack = total_ranged_damage / len(ranged_weapons)
 
     def get_model_priority_to_die(self):
         return self.priority_to_die
@@ -120,28 +147,43 @@ class Model:
             return False
 
     def set_description(self):
-        description = f'\n----- ----- ----- ----- ----- ----- ----- ----- -----\n'
-        description += f'\t[{self.name.upper()}]\n'
-        description += f'\tM\tT\tSV\tW\tLD\tOC\n'
-        description += f'\t{self.movement}\t{self.toughness}\t{self.salvation}\t{self.wounds}\t{self.leadership}\t' \
-                       f'{self.objective_control}\n'
+        lines = [
+            f"----- ----- ----- ----- ----- ----- ----- ----- -----",
+            f"\t[{self.name.upper()}]",
+            f"\tAttack profile: {self.model_preferred_attack_style}",
+            f"\tM\tT\tSV\tW\tLD\tOC",
+            f"\t{self.movement}\t{self.toughness}\t{self.salvation}\t"
+            f"{self.wounds}\t{self.leadership}\t{self.objective_control}",
+        ]
         if self.invulnerable_save:
-            description += f'\tINVULNERABLE SAVE\t{self.invulnerable_save}\n'
-        description += f'\tKEYWORDS:\n'
-        description += f'\t\t[{", ".join([keyword for keyword in self.keywords])}]\n'
-        for weapon in self.weapons:
-            description += f'{weapon.get_description()}\n'
+            lines.append(f"\tINVULNERABLE SAVE\t{self.invulnerable_save}")
+        lines.append(f"\tKEYWORDS:\n\t\t[{', '.join(self.keywords)}]")
+        lines.extend(weapon.get_description() for weapon in self.weapons)
+        description = "\n".join(lines)
         log(description)
         return description
 
     def set_model_preferred_attack_style(self):
-        # First of all calculate the hit probability and the potential damage for all the weapons
+        # First, calculate the hit probability and potential damage for all the weapons
         self.get_model_weapons_hit_probability_and_damage()
-        if (self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack) > \
-                (self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack):
+
+        self.model_melee_score = self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack
+        self.model_ranged_score = \
+            self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack
+
+        # Define a threshold for "balanced" (you can adjust this threshold based on your needs)
+        threshold = 0.2  # This can be adjusted to determine how close the scores need to be
+
+        # If the melee and ranged scores are within the threshold, it's a balanced model
+        if abs(self.model_melee_score - self.model_ranged_score) <= threshold:
+            self.model_preferred_attack_style = ModelPreferredStyle.BALANCED_ATTACK
+        elif self.model_melee_score > self.model_ranged_score:
             self.model_preferred_attack_style = ModelPreferredStyle.MELEE_ATTACK
         else:
             self.model_preferred_attack_style = ModelPreferredStyle.RANGED_ATTACK
+        log(f'[MODEL][{self.name}] has a melee_score of [{self.model_melee_score}] '
+            f'and ranged_score of [{self.model_ranged_score}] preferred attack style will be '
+            f'{self.model_preferred_attack_style}')
 
     def set_model_priority_to_die(self, more_than_one):
         if self.is_warlord:

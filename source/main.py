@@ -122,8 +122,10 @@ def command_phase(active_player, inactive_player):
 def movement_phase(active_player, inactive_player):
     # Get enemy's alive units
     enemy_units = inactive_player.get_units_alive()
-    # Force units to target enemies based on its score
-    active_player.army.target_enemies(enemy_units)
+
+    for unit in active_player.army.get_units_available_for_moving():
+        # Force units to target enemies based on its score
+        unit.chase_enemies(enemy_units)
     active_player.move_units()
     active_player.battlefield.display_board()
 
