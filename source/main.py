@@ -3,7 +3,7 @@ from battlefield import Battlefield, BoardHandle, Objective
 from logging_handler import *
 from shapely.geometry import Point
 from colorama import init, Fore
-from enums import AttackStrength, GamePhase, PlayerRol
+from enums import AttackStrength, CommandPhaseSteps, GamePhase, PlayerRol
 from players_army_configuration import players_army_configuration as players_cfg
 from database_handler import DatabaseHandler
 from player import Player
@@ -17,15 +17,29 @@ phases = dict()
 
 def load_game_configuration():
     global phases
-    local_phases = database.get_phases()
-    for phase_name, phase_sequence in local_phases:
-        phases[phase_sequence] = {'phase_name': phase_name, 'phase_function': None}
+    phase_functions = {
+        GamePhase.COMMAND_PHASE.value: command_phase,
+        GamePhase.MOVEMENT_PHASE.value: movement_phase,
+        GamePhase.SHOOTING_PHASE.value: shooting_phase,
+        GamePhase.CHARGE_PHASE.value: charge_phase,
+        GamePhase.FIGHT_PHASE.value: fight_phase
+    }
 
-    phases[GamePhase.COMMAND_PHASE.value]['phase_function'] = command_phase
-    phases[GamePhase.MOVEMENT_PHASE.value]['phase_function'] = movement_phase
-    phases[GamePhase.SHOOTING_PHASE.value]['phase_function'] = shooting_phase
-    phases[GamePhase.CHARGE_PHASE.value]['phase_function'] = charge_phase
-    phases[GamePhase.FIGHT_PHASE.value]['phase_function'] = fight_phase
+    # Command phase functions should be set under Command Phase phase_functions
+    command_phase_functions = {
+        CommandPhaseSteps.COMMAND_STEP.value: command_step,
+        CommandPhaseSteps.BATTLE_SHOCK_STEP.value: battle_shock_step,
+    }
+
+    # Initialize the `phases` dictionary
+    for phase_name, phase_function in phase_functions.items():
+        phases[phase_name] = {
+            'phase_function': phase_function
+        }
+
+        # Add specific sub-functions to the Command Phase
+        if phase_name == GamePhase.COMMAND_PHASE.value:
+            phases[phase_name]['sub_functions'] = command_phase_functions
 
 
 def load_players_army(player_1_name, player_2_name):
@@ -113,7 +127,15 @@ def place_army_into_boardgame(turns):
         player_count += 1
 
 
-def command_phase(active_player, inactive_player):
+def command_step():
+    pass
+
+
+def battle_shock_step():
+    pass
+
+
+def command_phase(command_phase_sequence, active_player, inactive_player):
     active_player.new_turn()
     inactive_player.new_turn()
 
@@ -129,7 +151,7 @@ def command_phase(active_player, inactive_player):
             unit.do_moral_check(active_player.last_roll_dice)
 
 
-def movement_phase(active_player, inactive_player):
+def movement_phase(movement_sequence, active_player, inactive_player):
     # Get enemy's alive units
     enemy_units = inactive_player.get_units_alive()
 
@@ -226,20 +248,13 @@ def resolve_player_attack(active_player, inactive_player, attack_dict):
     weapon = attack_dict['weapon']
     num_shoots = attack_dict['count']
     enemy_target = attack_dict["target"]
-    weapon_abilities = weapon.get_abilities()
+
+    num_shoots_increment = weapon.handle_weapon_abilities(model, enemy_target)
 
     log(f'[PLAYER {active_player.name}] resolving #{num_shoots} impact roll(s) made by '
         f'[{model.name}] with [{weapon.name}]'
-        f'[{", ".join([ability.name[0] for ability in weapon_abilities])}] against unit '
+        f'[{", ".join([ability.name[0] for ability in weapon.get_abilities()])}] against unit '
         f'[{enemy_target.raw_name}]')
-
-    # HEAVY -> If model has not been moved this turn, +1 at impact roll
-    if 'Heavy' in [weapon_ability.name[0] for weapon_ability in weapon_abilities]:
-        if not model.has_moved_this_turn():
-            log(f'[{model.name}] did not moved this turn, so it attack applies HEAVY ability adding one to impact roll')
-            num_shoots += 1
-        else:
-            log(f'[{model.name}] has moved this turn, can not apply HEAVY ability into impact roll')
 
     # 1 - Impact Roll
     successful_impacts, critical_impacts = resolve_impact_roll(active_player, weapon, num_shoots)
@@ -277,7 +292,7 @@ def resolve_player_attack(active_player, inactive_player, attack_dict):
     return killed_models
 
 
-def shooting_phase(active_player, inactive_player):
+def shooting_phase(shooting_phase_sequence, active_player, inactive_player):
     enemy_units = inactive_player.get_units_alive()
 
     log(f'[Shooting Phase #1] - Choose Unit for performing ranged attacks')
@@ -313,21 +328,21 @@ def shooting_phase(active_player, inactive_player):
         log('')
 
 
-def charge_phase(active_player, inactive_player):
+def charge_phase(charge_phase_sequence, active_player, inactive_player):
     pass
 
 
-def fight_phase(active_player, inactive_player):
+def fight_phase(fight_phase_sequence, active_player, inactive_player):
     pass
 
 
 def execute_phase(active_player, inactive_player):
-    for phase_sequence in phases:
-        phase = phases[phase_sequence]
-        phase_name_enum = GamePhase(phase_sequence).name.replace("_", " ").title()
+    for phase_sequences in phases:
+        phase = phases[phase_sequences]
+        phase_name_enum = GamePhase(phase_sequences).name.replace("_", " ").title()
         log(f"[REPORT] [TURN #{active_player.players_turn}] ----- ----- ----- [{active_player.name}] "
             f"{phase_name_enum} ----- ----- -----", True)
-        phase['phase_function'](active_player, inactive_player)
+        phase['phase_function'](phase_sequences, active_player, inactive_player)
 
 
 mapConfig1 = BoardHandle(

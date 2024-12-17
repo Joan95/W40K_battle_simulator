@@ -9,6 +9,37 @@ class AttackStrength(Enum):
     DOUBLE_STRONG = 6
 
 
+class CommandPhaseSteps(Enum):
+    COMMAND_STEP = 1
+    BATTLE_SHOCK_STEP = 2
+
+
+class MovementPhaseSteps(Enum):
+    MOVE_UNITS = 1
+    REINFORCEMENTS = 2
+
+
+class ShootingPhaseSteps(Enum):
+    SELECT_UNIT_FOR_SHOOTING = 1
+    SELECT_TARGETS = 2
+    RESOLVE_ATTACKS = 3
+    SELECT_NEXT_UNIT = 4
+
+
+class ChargePhaseSteps(Enum):
+    SELECT_UNIT_FOR_CHARGE = 1
+    SELECT_TARGETS = 2
+    CHARGE_ROLL = 3
+    CHARGE_MOVEMENT = 4
+    SELECT_NEXT_UNIT = 5
+
+
+class FightPhaseSteps(Enum):
+    PILE_IN = 1
+    MAKE_MEELE_ATTACKS = 2
+    CONSOLIDATE = 3
+
+
 class GamePhase(Enum):
     COMMAND_PHASE = 1
     MOVEMENT_PHASE = 2
@@ -29,15 +60,6 @@ class ModelPriority(Enum):
     CHARACTER = 3
     UNIT_BOSS = 2
     INFANTRY = 1
-
-
-class MovementType(Enum):
-    NORMAL_MOVE = 1
-    ADVANCE = 2
-    CHARGE_MOVE = 3
-    FALL_BACK = 4
-    PILE_IN = 5
-    CONSOLIDATE = 6
 
 
 class PlayerRol(Enum):

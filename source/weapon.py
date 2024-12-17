@@ -7,13 +7,69 @@ MAX_THROW_D6 = 6
 def set_abilities(abilities):
     abilities_list = []
     for ability in abilities:
-        abilities_list.append(WeaponAbility(ability))
+        abilities_list.append(WeaponAbility(ability[0]))
     return abilities_list
 
 
 class WeaponAbility:
     def __init__(self, name):
         self.name = name
+
+    def check_for_weapon_ability(self, model, enemy_target):
+        modifier = None
+        ability_name = self.name
+
+        # Define a dictionary where keys are abilities and values are their handler functions
+        ability_handlers = {
+            'Anti-infantry 4': lambda: self.handle_anti_infantry_ability(4),
+            'Anti-monster 4': lambda: self.handle_anti_monster_ability(4),
+            'Anti-vehicle 3': lambda: self.handle_anti_vehicle_ability(model, 3),
+            'Anti-vehicle 4': lambda: self.handle_anti_vehicle_ability(model, 4),
+            'Blast': lambda: self.handle_blast_ability(model, enemy_target),
+            'Devastating Wounds': lambda: self.handle_devastating_wounds_ability(),
+            'Extra Attacks'
+            'Heavy': lambda: self.handle_heavy_ability(model),
+            # Add more abilities here as needed
+        }
+
+        # Get the corresponding handler function for the ability
+        handler = ability_handlers.get(ability_name)
+
+        if handler:
+            # Execute the handler and get the modifier
+            modifier = handler()
+        else:
+            log(f'[WARNING] Unknown weapon ability: {self}')
+
+        return modifier
+
+    def handle_heavy_ability(self, model):
+        if not model.has_moved_this_turn():
+            log(f'[{model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
+            return 1  # Modifier for the impact roll
+        else:
+            log(f'[{model.name}] moved this turn, HEAVY ability cannot be applied.')
+            return 0  # No modifier
+
+    def handle_anti_infantry_ability(self, x):
+        pass
+
+    def handle_anti_monster_ability(self, x):
+        pass
+
+    def handle_anti_vehicle_ability(self, model, x):
+        log(f'[{model.name}] applies ANTI-VEHICLE ability: improved effectiveness against vehicles.')
+        # Implement anti-vehicle logic here
+        return None
+
+    def handle_blast_ability(self, model, enemy_target):
+        modifier = len(enemy_target.get_models_alive()) % 5
+        log(f'[{model.name}] [{self.name}] ability: additional attacks against large units. '
+            f'[{enemy_target.name}] has {len(enemy_target.get_models_alive())} models, attack modifier +{modifier}')
+        return modifier
+
+    def handle_devastating_wounds_ability(self):
+        pass
 
 
 class Weapon:
@@ -102,15 +158,6 @@ class Weapon:
             base, extra = (attacks.split('+') + [0])[:2] if '+' in attacks else (attacks, 0)
             return int(base.replace('D', '')) + int(extra)    # Do the average if it is a die
 
-    def get_weapon_average_raw_damage(self):
-        damage = self.damage
-        try:
-            return int(damage)
-        except ValueError:
-            # It's a D or +something in the num_attacks characteristic
-            base, extra = (damage.split('+') + [0])[:2] if '+' in damage else (damage, 0)
-            return int(base.replace('D', ''))/2 + int(extra)
-
     def get_weapon_range_attack(self):
         return int(self.range_attack.replace('"', ''))
 
@@ -136,6 +183,10 @@ class MeleeWeapon(Weapon):
 
     def get_strength(self):
         return super().get_strength()
+
+    def handle_weapon_abilities(self, model, enemy_target):
+        for ability in self.abilities:
+            ability.check_for_weapon_ability(model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
@@ -167,6 +218,10 @@ class RangedWeapon(Weapon):
 
     def get_strength(self):
         return super().get_strength()
+
+    def handle_weapon_abilities(self, model, enemy_target):
+        for ability in self.abilities:
+            ability.check_for_weapon_ability(model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
