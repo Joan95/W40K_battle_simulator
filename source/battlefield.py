@@ -168,6 +168,9 @@ class Battlefield:
     def set_defender(self):
         self.mark_deployment_zone(self.map_configuration.defender_zone, 'D')
 
-    def start_the_game(self):
+    def start_game(self):
         self.has_game_started = True
         print("\t\tLet the game begin! Destroy your anuses!")
+        # Remove Attackers and defenders zone
+        self.remove_attacker_defender_zone()
+        self.display_board()

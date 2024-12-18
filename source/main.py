@@ -1,56 +1,23 @@
 import os.path
 from battlefield import Battlefield, BoardHandle, Objective
-from logging_handler import *
-from shapely.geometry import Point
-from colorama import init, Fore
-from enums import AttackStrength, CommandPhaseSteps, GamePhase, MovementPhaseSteps, PlayerRol
-from players_army_configuration import players_army_configuration as players_cfg
+from colorama import init
 from database_handler import DatabaseHandler
+from enums import AttackStrength, PlayerRol
+from game_handler import GameHandler
+from logging_handler import *
+from players_army_configuration import players_army_configuration as players_cfg
 from player import Player
+from shapely.geometry import Point
 
 init()
 
 database = DatabaseHandler(os.path.join('..', 'database', 'database.db'))
 players_list = list()
-phases = dict()
-
-
-def load_game_configuration():
-    global phases
-    phase_functions = {
-        GamePhase.COMMAND_PHASE.value: command_phase,
-        GamePhase.MOVEMENT_PHASE.value: movement_phase,
-        GamePhase.SHOOTING_PHASE.value: shooting_phase,
-        GamePhase.CHARGE_PHASE.value: charge_phase,
-        GamePhase.FIGHT_PHASE.value: fight_phase
-    }
-
-    command_phase_functions = {
-        CommandPhaseSteps.COMMAND_STEP.value: command_step,
-        CommandPhaseSteps.BATTLE_SHOCK_STEP.value: battle_shock_step,
-    }
-
-    movement_phase_functions = {
-        MovementPhaseSteps.MOVE_UNITS.value: move_units,
-        MovementPhaseSteps.REINFORCEMENTS.value: reinforcements,
-    }
-
-    # Initialize the `phases` dictionary
-    for phase_name, phase_function in phase_functions.items():
-        phases[phase_name] = {
-            'phase_function': phase_function
-        }
-
-        if phase_name == GamePhase.COMMAND_PHASE.value:
-            phases[phase_name]['sub_functions'] = command_phase_functions
-
-        if phase_name == GamePhase.MOVEMENT_PHASE.value:
-            phases[phase_name]['sub_functions'] = movement_phase_functions
+game_handler = None
 
 
 def load_players_army(player_1_name, player_2_name):
     global players_list
-    players = list(players_cfg.keys())
 
     def create_player(player_name):
         return Player(database, player_name, players_cfg[player_name],
@@ -131,50 +98,6 @@ def place_army_into_boardgame(turns):
         if player.has_units_to_deploy():
             player.deploy_units()
         player_count += 1
-
-
-def command_step(active_player, inactive_player):
-    # Now increase command points for each one
-    active_player.increment_command_points()
-    inactive_player.increment_command_points()
-
-
-def battle_shock_step(active_player, inactive_player):
-    for unit in active_player.get_units_alive():
-        if len(unit.models) < unit.unit_initial_force / 2:
-            log(f"Unit {unit.name} at half of its initial force, will have to throw the dices for checking its moral",
-                True)
-            active_player.roll_dice()
-            unit.do_moral_check(active_player.last_roll_dice)
-
-
-def command_phase(command_phase_sequence, active_player, inactive_player):
-    active_player.new_turn()
-    inactive_player.new_turn()
-
-    execute_phase_steps(command_phase_sequence, active_player, inactive_player)
-
-
-def move_units(active_player, inactive_player):
-    # Get enemy's alive units
-    enemy_units = inactive_player.get_units_alive()
-
-    for unit in active_player.army.get_units_available_for_moving():
-        # Force units to target enemies based on its score
-        unit.chase_enemies(enemy_units)
-
-    # TODO: Check whether it's worth advancing or we might want to shoot instead
-    active_player.move_units()
-
-
-def reinforcements(active_player, inactive_player):
-    pass
-
-
-def movement_phase(movement_sequence, active_player, inactive_player):
-    execute_phase_steps(movement_sequence, active_player, inactive_player)
-
-    active_player.battlefield.display_board()
 
 
 def resolve_impact_roll(active_player, weapon, num_shoots):
@@ -306,64 +229,6 @@ def resolve_player_attack(active_player, inactive_player, attack_dict):
     return killed_models
 
 
-def shooting_phase(shooting_phase_sequence, active_player, inactive_player):
-    enemy_units = inactive_player.get_units_alive()
-
-    log(f'[Shooting Phase #1] - Choose Unit for performing ranged attacks')
-    units_available_for_shooting = active_player.get_available_units_for_shooting()
-
-    log(f'[{active_player.name}] is declaring for following unit(s) shooting phase that: ')
-    # 1 - Choose Unit for performing shoots
-    for unit in units_available_for_shooting:
-        log(f'\t\t----- ----- ----- UNIT DECLARATION ----- ----- -----')
-        # 2 - Choose targets for that unit
-        unit_can_shoot = active_player.set_target_for_unit(unit, enemy_units)
-
-        # 3 - Perform range attack
-        # At least one model can shoot a target
-        if unit_can_shoot:
-            attacks = unit.get_models_ranged_attacks()
-
-            for count, attack in enumerate(attacks, start=1):
-                log('')
-                log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
-                log('')
-                killed_models = list()
-                killed_models.extend(resolve_player_attack(active_player, inactive_player, attacks[attack]))
-
-                if killed_models:
-                    for model in killed_models:
-                        log(f'[KILL REPORT] [{model.name}] has died this turn')
-                        board.kill_model(model)
-        else:
-            log(f'\t[PLAYER {active_player.name}] [{unit.name}] will not shoot since it does not see anything')
-
-        # 4 - Repeat with very next Unit
-        log('')
-
-
-def charge_phase(charge_phase_sequence, active_player, inactive_player):
-    pass
-
-
-def fight_phase(fight_phase_sequence, active_player, inactive_player):
-    pass
-
-
-def execute_phase(active_player, inactive_player):
-    for phase_sequences in phases:
-        phase = phases[phase_sequences]
-        phase_name_enum = GamePhase(phase_sequences).name.replace("_", " ").title()
-        log(f"[REPORT] [TURN #{active_player.players_turn}] ----- ----- ----- [{active_player.name}] "
-            f"{phase_name_enum} ----- ----- -----", True)
-        phase['phase_function'](phases[phase_sequences], active_player, inactive_player)
-
-
-def execute_phase_steps(phase_steps, active_player, inactive_player):
-    for step in phase_steps['sub_functions']:
-        phase_steps['sub_functions'][step](active_player, inactive_player)
-
-
 mapConfig1 = BoardHandle(
     name="Map 1",
     wide=44,
@@ -381,7 +246,6 @@ if __name__ == '__main__':
         log("[>>] - Weeeelcome to WARHAMMER 40K BATTLE SIMULATOR!", True)
         board = Battlefield(mapConfig1)
         board.place_objectives()
-        load_game_configuration()
         # Army selection: will assign
         p1, p2 = load_players_army("Shuan", "Guarrià")
         # Players Handshake: configuration of factions, here will be selected which factions will fight
@@ -393,25 +257,8 @@ if __name__ == '__main__':
         board.display_board()
         # Initiatives
         turn_list = initiatives(p1, p2)
-        # If here all the Units have been displayed so the game can start!
-        board.start_the_game()
-        # Remove Attackers and defenders zone
-        board.remove_attacker_defender_zone()
-        board.display_board()
-        print()
-        for (game_turn, (attacker, defender)) in turn_list:
-            log(f"[REPORT]\n\n\t\t----- ----- ----- ----- ----- Game TURN #{game_turn} "
-                "----- ----- ----- ----- -----")
-            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [#{game_turn}]{Fore.RESET}")
-            attacker.players_turn = game_turn
-            defender.players_turn = game_turn
-
-            # Execute Attacker phase
-            execute_phase(attacker, defender)
-            # Execute Defender phase
-            execute_phase(defender, attacker)
-            print()
-
+        game_handler = GameHandler(turn_list, board)
+        game_handler.run_game()
         board.display_board()
     except KeyboardInterrupt:
         pass

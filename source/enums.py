@@ -9,34 +9,80 @@ class AttackStrength(Enum):
     DOUBLE_STRONG = 6
 
 
-class CommandPhaseSteps(Enum):
+class CommandPhase(Enum):
+    """
+        1 - COMMAND PHASE
+            1 - COMMAND
+            2 - BATTLE-SHOCK
+    """
     COMMAND_STEP = 1
     BATTLE_SHOCK_STEP = 2
 
 
-class MovementPhaseSteps(Enum):
+class MovementPhase(Enum):
+    """
+        2 - MOVEMENT PHASE
+            1 - MOVE UNITS
+            2 - REINFORCEMENTS
+    """
     MOVE_UNITS = 1
     REINFORCEMENTS = 2
 
 
-class ShootingPhaseSteps(Enum):
-    SELECT_UNIT_FOR_SHOOTING = 1
+class ShootingPhase(Enum):
+    """
+        3 - SHOOTING PHASE
+            1 - SELECT ELIGIBLE UNIT
+            2 - SELECT TARGETS
+            3 - MAKE RANGED ATTACKS
+            4 - REPEAT FOR NEXT ELIGIBLE UNIT
+    """
+    SELECT_ELIGIBLE_UNIT = 1
     SELECT_TARGETS = 2
-    RESOLVE_ATTACKS = 3
-    SELECT_NEXT_UNIT = 4
+    MAKE_RANGED_ATTACKS = 3
+    REPEAT_FOR_NEXT_ELIGIBLE_UNIT = 4
 
 
-class ChargePhaseSteps(Enum):
-    SELECT_UNIT_FOR_CHARGE = 1
+class ChargePhase(Enum):
+    """
+        4 - CHARGE PHASE
+            1 - SELECT ELIGIBLE UNIT
+            2 - SELECT TARGETS
+            3 - MAKE CHARGE ROLL
+            4 - MAKE CHARGE MOVE
+            5 - REPEAT FOR NEXT ELIGIBLE UNIT
+    """
+    SELECT_ELIGIBLE_UNIT = 1
     SELECT_TARGETS = 2
-    CHARGE_ROLL = 3
-    CHARGE_MOVEMENT = 4
-    SELECT_NEXT_UNIT = 5
+    MAKE_CHARGE_ROLL = 3
+    MAKE_CHARGE_MOVEMENT = 4
+    REPEAT_FOR_NEXT_ELIGIBLE_UNIT = 5
 
 
-class FightPhaseSteps(Enum):
+class FightPhase(Enum):
+    """
+        5 - FIGHT PHASE
+            1 - FIGHTS FIRST
+            2 - REMAINING COMBATS
+                1 - PILE IN
+                2 - MAKE MELEE ATTACKS
+                3 - CONSOLIDATE
+    """
+    FIGHTS_FIRST = 1
+    REMAINING_COMBATS = 2
+
+
+class RemainingCombats(Enum):
+    """
+        5 - FIGHT PHASE
+            1 - FIGHTS FIRST
+            2 - REMAINING COMBATS
+                1 - PILE IN
+                2 - MAKE MELEE ATTACKS
+                3 - CONSOLIDATE
+    """
     PILE_IN = 1
-    MAKE_MEELE_ATTACKS = 2
+    MAKE_MELEE_ATTACKS = 2
     CONSOLIDATE = 3
 
 
