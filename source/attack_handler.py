@@ -9,6 +9,8 @@ from logging_handler import log
     4 - SAVING THROW
     5 - INFLICT DAMAGE
 """
+
+
 class AttackHandler:
     def __init__(self):
         self.attacker = None
@@ -28,7 +30,7 @@ class AttackHandler:
             ResolveAttackSteps.WOUND_ROLL.name: wound_roll,
             ResolveAttackSteps.ALLOCATE_ATTACK.name: allocate_attack,
             ResolveAttackSteps.SAVING_THROW.name: saving_throw,
-            ResolveAttackSteps.INFLICT_DAMAGE: inflict_damage,
+            ResolveAttackSteps.INFLICT_DAMAGE.name: inflict_damage,
         }
         for step_name, function in attack_steps.items():
             self.attack_steps[step_name] = {
@@ -36,18 +38,27 @@ class AttackHandler:
             }
 
     def do_attack(self):
+        attacks_for_next_step = self.num_attacks
+        critical_ones = 0
         for count, step_name in enumerate(self.attack_steps, start=1):
             attack_step = self.attack_steps[step_name]
-            feedback = self.execute_attack_step(step_name, attack_step, count)
+            attacks_for_next_step, critical_ones = self.execute_attack_step(step_name, attack_step, count,
+                                                                            attacks_for_next_step, critical_ones)
+            if not attacks_for_next_step + critical_ones:
+                # There is not a single hit, just stop
+                break
 
-    def execute_attack_step(self, step_name, attack_step, step_number):
+    def execute_attack_step(self, step_name, attack_step, step_number, num_attacks, critical):
         current_step = attack_step['main_function']
-        log(f"[ATTACK] Attacking model(s) [{self.attacking_model.name}] "
-            f"Defender unit: [{self.defender_unit.name}]",
+        step_name = f'#{step_number} {step_name.replace("_", " ").title().upper()}'
+        log(f"[ATTACK step: {step_name}] Attacking model(s) [{self.attacking_model.name}] "
+            f"target unit: [{self.defender_unit.name}]",
             True)
 
-        feedback = current_step(self.attacker, self.defender, self.attacking_model, self.defender_unit,
-                                self.attacking_weapon, self.num_attacks)
+        attacks_for_next_step, critical_ones = current_step(self.attacker, self.defender, self.attacking_model,
+                                                            self.defender_unit, self.attacking_weapon, num_attacks,
+                                                            critical)
+        return attacks_for_next_step, critical_ones
 
 
     def set_new_attack(self, attacker, defender, attacks):

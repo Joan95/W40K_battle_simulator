@@ -112,6 +112,7 @@ class PlayerRol(Enum):
     ATTACKER = 0
     DEFENDER = 1
 
+
 class ResolveAttackSteps(Enum):
     """
         1 - HIT ROLL
@@ -125,6 +126,7 @@ class ResolveAttackSteps(Enum):
     ALLOCATE_ATTACK = 3
     SAVING_THROW = 4
     INFLICT_DAMAGE = 5
+
 
 class Visibility(Enum):
     VISIBLE = 0

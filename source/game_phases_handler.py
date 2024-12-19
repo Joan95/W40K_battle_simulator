@@ -95,17 +95,10 @@ def make_ranged_attacks(active_player, inactive_player, boardgame):
     if selected_unit.has_shoot:
         attacks = selected_unit.get_models_ranged_attacks()
 
-        killed_models = list()
         for count, attack in enumerate(attacks, start=1):
             log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
             resolve_attack.set_new_attack(active_player, inactive_player, attacks[attack])
             resolve_attack.do_attack()
-            killed_models.extend(resolve_player_attack(active_player, inactive_player, attacks[attack]))
-
-        if killed_models:
-            for model in killed_models:
-                log(f'[KILL REPORT] [{model.name}] has died this turn')
-                boardgame.kill_model(model)
             boardgame.display_board()
     else:
         log(f'\t[PLAYER {active_player.name}] [{selected_unit.name}] will not shoot since '
