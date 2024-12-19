@@ -1,6 +1,6 @@
 from colorama import Fore
 from enums import ChargePhase, CommandPhase, FightPhase, GamePhase, MovementPhase, RemainingCombats, ShootingPhase
-from game_phases import *
+from game_phases_handler import *
 from logging_handler import *
 
 
@@ -10,6 +10,7 @@ class GameHandler:
         self.active_player = None
         self.inactive_player = None
         self.turns_list = turns
+        self.game_turn = 0
         self.phases = dict()
 
         # If here all the Units have been displayed so the game can start!
@@ -21,32 +22,36 @@ class GameHandler:
     def execute_all_phases(self):
         for count, phase_name in enumerate(self.phases, start=1):
             phase = self.phases[phase_name]
-            self.execute_main_phases(phase_name, phase, count)
+            feedback = self.execute_main_phases(phase_name, phase, count)
 
     def execute_main_phases(self, phase_name, phase_dict, phase_number, upper_phase=None):
         current_phase = phase_dict['main_function']
         phase_name = f'#{phase_number} {phase_name.replace("_", " ").title().upper()}'
         if upper_phase:
             phase_name = upper_phase + ' - ' + phase_name
-        log(f"[REPORT] [TURN #{self.active_player.players_turn}] ----- ----- ----- [{self.active_player.name}] "
+        log(f"[REPORT] [TURN #{self.game_turn}] ----- ----- ----- [{self.active_player.name}] "
             f"{phase_name} ----- ----- -----", True)
 
-        current_phase(self.active_player, self.inactive_player)
+        feedback = current_phase(self.active_player, self.inactive_player, self.boardgame)
 
         if 'sub_functions' in phase_dict:
             sub_phase_dict = phase_dict['sub_functions']
-            for count, sub_phase_name in enumerate(sub_phase_dict, start=1):
-                sub_phase = sub_phase_dict[sub_phase_name]
-                self.execute_main_phases(sub_phase_name, sub_phase, count, phase_name)
+            sub_phase_loop_finished = False
+            while not sub_phase_loop_finished:
+                for count, sub_phase_name in enumerate(sub_phase_dict, start=1):
+                    sub_phase = sub_phase_dict[sub_phase_name]
+                    sub_phase_loop_finished = self.execute_main_phases(sub_phase_name, sub_phase, count)
+
+        return feedback
+
+    def execute_sub_phases(self):
+        pass
 
     def run_game(self):
-        for (game_turn, (attacker, defender)) in self.turns_list:
-            log(f"[REPORT]\n\n\t\t----- ----- ----- ----- ----- Game TURN #{game_turn} "
+        for (self.game_turn, (attacker, defender)) in self.turns_list:
+            log(f"[REPORT]\n\n\t\t----- ----- ----- ----- ----- Game TURN #{self.game_turn} "
                 "----- ----- ----- ----- -----")
-            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [#{game_turn}]{Fore.RESET}")
-
-            attacker.players_turn = game_turn
-            defender.players_turn = game_turn
+            print(f"\t{Fore.LIGHTYELLOW_EX}Game turn [#{self.game_turn}]{Fore.RESET}")
 
             # Execute Attacker phase
             self.active_player = attacker

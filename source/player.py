@@ -38,17 +38,30 @@ class Player:
         self.army_cfg = army_cfg
         self.army = Army()
         self.battlefield = None
-        self.command_points = 0
         self.deployment_zone = None
         self.database = database
         self.detachment = None
         self.dices = Dices(name)
         self.faction = None
         self.factions_color = set_color(faction_color)
-        self.players_turn = 0
         self.rol = None
         self.user_color = random.choice(colors_list)
-        self.name = f"{self.user_color}{bold_on}{name}{bold_off}{Fore.RESET}"
+        self.raw_name = name
+        self.name = f"{self.user_color}{bold_on}{self.raw_name}{bold_off}{Fore.RESET}"
+
+        """
+            1 - COMMAND PHASE
+        """
+        self.command_points = 0
+        """
+            2 - MOVEMENT PHASE
+        """
+        """
+            3 - SHOOTING PHASE
+        """
+        self.units_selection_list = None
+        self.unit_idx = 0
+        self.selected_unit = None
 
         self.set_faction(army_cfg.get('faction'))
         self.set_detachment(army_cfg.get('detachment'))
@@ -59,11 +72,12 @@ class Player:
         log(f'\t[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
         return model.receive_damage(self.dices, damage)
 
-    def get_available_units_for_shooting(self):
-        units_available_for_shooting = self.army.get_units_available_for_shooting()
-        log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
-            f'{", ".join([unit.name for unit in units_available_for_shooting])}')
-        return units_available_for_shooting
+    def are_more_units_to_be_selected(self):
+        if self.unit_idx < len(self.units_selection_list):
+            log(f'\t[PLAYER {self.name}] there are still units left')
+            return True
+        log(f'\t[PLAYER {self.name}] no more units left')
+        return False
 
     def calculate_model_salvation(self, model_attacked, weapon_armour_penetration):
         raw_salvation = model_attacked.get_model_salvation()
@@ -91,8 +105,14 @@ class Player:
         log(f"\t[PLAYER {self.name}] is deploying a unit")
         self.army.deploy_unit(self.battlefield, self.deployment_zone)
 
+    def get_command_points(self):
+        return self.command_points
+
     def get_last_rolled_dice_values(self):
         return self.dices.last_roll_dice_values
+
+    def get_selected_unit(self):
+        return self.selected_unit
 
     def get_units_alive(self):
         """Return a list of alive units."""
@@ -215,6 +235,12 @@ class Player:
         """Set the player's faction."""
         self.faction = f"{bold_on}{self.factions_color}{faction_cfg}{Fore.RESET}{bold_off}"
 
+    def set_next_unit_for_shooting(self):
+        self.selected_unit = None
+        if self.units_selection_list[self.unit_idx]:
+            self.selected_unit = self.units_selection_list[self.unit_idx]
+            self.unit_idx += 1
+
     def set_rol(self, rol):
         """Set the player's role (attacker or defender)."""
         role_colors = {
@@ -259,13 +285,22 @@ class Player:
                     break
         return at_least_one_shot_is_available
 
-    def set_target_for_unit(self, unit, enemy_units_list):
-        unit_has_a_shot = False
-        for model in unit.get_unit_models_available_for_shooting():
+    def set_target_for_selected_unit(self, enemy_units_list):
+        for model in self.selected_unit.get_unit_models_available_for_shooting():
             if self.set_target_for_model(model, enemy_units_list):
-                unit_has_a_shot = True
-                unit.has_shoot = True
-        return unit_has_a_shot
+                self.selected_unit.has_shoot = True
+
+    def set_units_for_charge(self):
+        self.unit_idx = 0
+        self.units_selection_list = self.army.get_units_available_for_charging()
+        log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for charging are: '
+            f'{", ".join([unit.name for unit in self.units_selection_list])}')
+
+    def set_units_for_shooting(self):
+        self.unit_idx = 0
+        self.units_selection_list = self.army.get_units_available_for_shooting()
+        log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
+            f'{", ".join([unit.name for unit in self.units_selection_list])}')
 
 
 def get_distance_between_models(model1, model2):
