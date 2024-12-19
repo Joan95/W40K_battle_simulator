@@ -11,6 +11,7 @@ from logging_handler import log
 """
 resolve_attack = AttackHandler()
 
+
 def command_phase(active_player, inactive_player, boardgame):
     """
         1 - COMMAND PHASE
