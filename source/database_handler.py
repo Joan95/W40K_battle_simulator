@@ -73,12 +73,6 @@ class DatabaseHandler:
             keywords = cursor.fetchall()
             return [keyword[0] for keyword in keywords]
 
-    def get_phases(self):
-        with sqlite3.connect(self.database_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT name, sequence FROM phases')
-            return cursor.fetchall()
-
     def get_factions(self):
         with sqlite3.connect(self.database_path) as conn:
             cursor = conn.cursor()

@@ -35,7 +35,7 @@ class BoardHandle:
 
     def display_board_game(self):
         # Print configuration for seeing how the map looks like
-        print(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+        log(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}", True)
         for count, row in enumerate(self.boardgame, start=0):
             row_to_print = f"\t{'{:02}'.format(count)}|"
             for cell in row:
@@ -48,8 +48,8 @@ class BoardHandle:
                         row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
                     else:
                         row_to_print += f' {cell.name[:2]}'
-            print(f"{row_to_print}|")
-        print(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}")
+            log(f"{row_to_print}|", True)
+        log(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}", True)
 
     def is_cell_empty(self, coord):
         x, y = int(coord.x), int(coord.y)
@@ -65,7 +65,7 @@ class BoardHandle:
         self.boardgame[int(coord.y)][int(coord.x)] = model
         model.position = coord
         model.is_alive = True
-        log(f'\t\t\tModel [{model.name}] set at position {model.position}')
+        log(f'\t\t\tModel [{model.name}] set at position {int(model.position.x), int(model.position.y)}')
 
 
 def get_random_point_in_zone(zone):
@@ -168,6 +168,9 @@ class Battlefield:
     def set_defender(self):
         self.mark_deployment_zone(self.map_configuration.defender_zone, 'D')
 
-    def start_the_game(self):
+    def start_game(self):
         self.has_game_started = True
         print("\t\tLet the game begin! Destroy your anuses!")
+        # Remove Attackers and defenders zone
+        self.remove_attacker_defender_zone()
+        self.display_board()

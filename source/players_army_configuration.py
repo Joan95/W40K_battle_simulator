@@ -3,9 +3,6 @@
 players_army_configuration = \
     {
         'default': {
-
-        },
-        'Shuan': {
             'faction': 'Orks',
             'detachment': 'Da Big Hunt',
             'army': {
@@ -93,6 +90,71 @@ players_army_configuration = \
                                     'MELEE': ['Power snappa']
                                 },
                             },
+                        ]
+                    },
+                    {
+                        'unit_name': 'Big Mek + Boyz',
+                        'models': [
+                            {
+                                'name': 'Big Mek with Shokk Attack Gun',
+                                'weapons': {
+                                    'RANGED': ['Shokk attack gun'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Choppa']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Shoota'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boy',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Rokkit launcha'],
+                                    'MELEE': ['Close combat weapon']
+                                },
+                            },
+                            {
+                                'name': 'Boss Nob',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Power klaw']
+                                },
+                            },
+                        ]
+                    }
+                ],
+            },
+        },
+        'Shuan': {
+            'faction': 'Orks',
+            'detachment': 'Da Big Hunt',
+            'army': {
+                'units': [
+                    {
+                        'unit_name': 'Mozrog Skragbad',
+                        'models': [
+                            {
+                                'name': 'Mozrog Skragbad',
+                                'weapons': {
+                                    'RANGED': ['Thump gun'],
+                                    'MELEE': ["Big Chompa\'s jaws", 'Gutrippa']
+                                },
+                                'warlord': True
+                            }
                         ]
                     },
                     {
