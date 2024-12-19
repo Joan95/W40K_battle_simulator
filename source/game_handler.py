@@ -1,7 +1,7 @@
 from colorama import Fore
 from enums import ChargePhase, CommandPhase, FightPhase, GamePhase, MovementPhase, RemainingCombats, ShootingPhase
 from game_phases_handler import *
-from logging_handler import *
+from logging_handler import log
 
 
 class GameHandler:
@@ -43,9 +43,6 @@ class GameHandler:
                     sub_phase_loop_finished = self.execute_main_phases(sub_phase_name, sub_phase, count)
 
         return feedback
-
-    def execute_sub_phases(self):
-        pass
 
     def run_game(self):
         for (self.game_turn, (attacker, defender)) in self.turns_list:

@@ -27,7 +27,7 @@ class WeaponAbility:
             'Anti-vehicle 4': lambda: self.handle_anti_vehicle_ability(model, 4),
             'Blast': lambda: self.handle_blast_ability(model, enemy_target),
             'Devastating Wounds': lambda: self.handle_devastating_wounds_ability(),
-            'Extra Attacks'
+            'Extra Attacks': lambda: self.handle_extra_attacks_ability(),
             'Heavy': lambda: self.handle_heavy_ability(model),
             # Add more abilities here as needed
         }
@@ -39,9 +39,12 @@ class WeaponAbility:
             # Execute the handler and get the modifier
             modifier = handler()
         else:
-            log(f'[WARNING] Unknown weapon ability: {self}')
+            log(f'[WARNING] Unknown weapon ability: {self.name}')
 
         return modifier
+
+    def handle_extra_attacks_ability(self):
+        pass
 
     def handle_heavy_ability(self, model):
         if not model.has_moved_this_turn():

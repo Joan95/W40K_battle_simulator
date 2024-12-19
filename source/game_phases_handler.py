@@ -1,5 +1,5 @@
-from game_wound_handler import *
-from logging_handler import *
+from attack_handler import AttackHandler
+from logging_handler import log
 
 """
     WARHAMMER 40K 10th edition:
@@ -9,11 +9,7 @@ from logging_handler import *
     4 - CHARGE PHASE
     5 - FIGHT PHASE
 """
-
-class GamePhaseHandler:
-    def __init__(self):
-        pass
-
+resolve_attack = AttackHandler()
 
 def command_phase(active_player, inactive_player, boardgame):
     """
@@ -35,7 +31,7 @@ def command(active_player, inactive_player, boardgame):
 def battle_shock(active_player, inactive_player, boardgame):
     for unit in active_player.get_units_alive():
         if len(unit.models) < unit.unit_initial_force / 2:
-            log(f"Unit {unit.name} at half of its initial force, will have to throw the dices for checking "
+            log(f"[REPORT] Unit {unit.name} at half of its initial force, will have to throw the dices for checking "
                 f"its moral", True)
             active_player.roll_dice()
             unit.do_moral_check(active_player.last_roll_dice)
@@ -64,6 +60,7 @@ def move_units(active_player, inactive_player, boardgame):
 
 
 def reinforcements(active_player, inactive_player, boardgame):
+    log(f'[REPORT] [{active_player.name}] has no more units to be placed. Not expecting further reinforcements')
     return True
 
 
@@ -101,6 +98,8 @@ def make_ranged_attacks(active_player, inactive_player, boardgame):
         killed_models = list()
         for count, attack in enumerate(attacks, start=1):
             log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
+            resolve_attack.set_new_attack(active_player, inactive_player, attacks[attack])
+            resolve_attack.do_attack()
             killed_models.extend(resolve_player_attack(active_player, inactive_player, attacks[attack]))
 
         if killed_models:

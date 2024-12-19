@@ -3,7 +3,7 @@ from army import Army
 from colorama import Fore
 from dice import Dices
 from enums import PlayerRol, WeaponType
-from logging_handler import *
+from logging_handler import log
 from model import Model
 from unit import Unit
 from weapon import MeleeWeapon, RangedWeapon
@@ -100,19 +100,17 @@ class Player:
                 f'own salvation of {salvation} (SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return salvation
 
-    def deploy_units(self):
-        """Deploy a unit into the player's zone."""
-        log(f"\t[PLAYER {self.name}] is deploying a unit")
-        self.army.deploy_unit(self.battlefield, self.deployment_zone)
-
-    def get_command_points(self):
-        return self.command_points
+    def get_deployment_zone(self):
+        return self.deployment_zone
 
     def get_last_rolled_dice_values(self):
         return self.dices.last_roll_dice_values
 
     def get_selected_unit(self):
         return self.selected_unit
+
+    def get_unit_to_deploy(self):
+        return self.army.get_unit_to_deploy()
 
     def get_units_alive(self):
         """Return a list of alive units."""

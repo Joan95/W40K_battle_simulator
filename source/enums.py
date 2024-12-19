@@ -11,9 +11,9 @@ class AttackStrength(Enum):
 
 class CommandPhase(Enum):
     """
-        1 - COMMAND PHASE
-            1 - COMMAND
-            2 - BATTLE-SHOCK
+    1 - COMMAND PHASE
+        1 - COMMAND
+        2 - BATTLE-SHOCK
     """
     COMMAND_STEP = 1
     BATTLE_SHOCK_STEP = 2
@@ -21,9 +21,9 @@ class CommandPhase(Enum):
 
 class MovementPhase(Enum):
     """
-        2 - MOVEMENT PHASE
-            1 - MOVE UNITS
-            2 - REINFORCEMENTS
+    2 - MOVEMENT PHASE
+        1 - MOVE UNITS
+        2 - REINFORCEMENTS
     """
     MOVE_UNITS = 1
     REINFORCEMENTS = 2
@@ -31,11 +31,11 @@ class MovementPhase(Enum):
 
 class ShootingPhase(Enum):
     """
-        3 - SHOOTING PHASE
-            1 - SELECT ELIGIBLE UNIT
-            2 - SELECT TARGETS
-            3 - MAKE RANGED ATTACKS
-            4 - REPEAT FOR NEXT ELIGIBLE UNIT
+    3 - SHOOTING PHASE
+        1 - SELECT ELIGIBLE UNIT
+        2 - SELECT TARGETS
+        3 - MAKE RANGED ATTACKS
+        4 - REPEAT FOR NEXT ELIGIBLE UNIT
     """
     SELECT_ELIGIBLE_UNIT = 1
     SELECT_TARGETS = 2
@@ -45,12 +45,12 @@ class ShootingPhase(Enum):
 
 class ChargePhase(Enum):
     """
-        4 - CHARGE PHASE
-            1 - SELECT ELIGIBLE UNIT
-            2 - SELECT TARGETS
-            3 - MAKE CHARGE ROLL
-            4 - MAKE CHARGE MOVE
-            5 - REPEAT FOR NEXT ELIGIBLE UNIT
+    4 - CHARGE PHASE
+        1 - SELECT ELIGIBLE UNIT
+        2 - SELECT TARGETS
+        3 - MAKE CHARGE ROLL
+        4 - MAKE CHARGE MOVE
+        5 - REPEAT FOR NEXT ELIGIBLE UNIT
     """
     SELECT_ELIGIBLE_UNIT = 1
     SELECT_TARGETS = 2
@@ -61,12 +61,12 @@ class ChargePhase(Enum):
 
 class FightPhase(Enum):
     """
-        5 - FIGHT PHASE
-            1 - FIGHTS FIRST
-            2 - REMAINING COMBATS
-                1 - PILE IN
-                2 - MAKE MELEE ATTACKS
-                3 - CONSOLIDATE
+    5 - FIGHT PHASE
+        1 - FIGHTS FIRST
+        2 - REMAINING COMBATS
+            1 - PILE IN
+            2 - MAKE MELEE ATTACKS
+            3 - CONSOLIDATE
     """
     FIGHTS_FIRST = 1
     REMAINING_COMBATS = 2
@@ -74,12 +74,12 @@ class FightPhase(Enum):
 
 class RemainingCombats(Enum):
     """
-        5 - FIGHT PHASE
-            1 - FIGHTS FIRST
-            2 - REMAINING COMBATS
-                1 - PILE IN
-                2 - MAKE MELEE ATTACKS
-                3 - CONSOLIDATE
+    5 - FIGHT PHASE
+        1 - FIGHTS FIRST
+        2 - REMAINING COMBATS
+            1 - PILE IN
+            2 - MAKE MELEE ATTACKS
+            3 - CONSOLIDATE
     """
     PILE_IN = 1
     MAKE_MELEE_ATTACKS = 2
@@ -112,6 +112,19 @@ class PlayerRol(Enum):
     ATTACKER = 0
     DEFENDER = 1
 
+class ResolveAttackSteps(Enum):
+    """
+        1 - HIT ROLL
+        2 - WOUND ROLL
+        3 - ALLOCATE ATTACK
+        4 - SAVING THROW
+        5 - INFLICT DAMAGE
+    """
+    HIT_ROLL = 1
+    WOUND_ROLL = 2
+    ALLOCATE_ATTACK = 3
+    SAVING_THROW = 4
+    INFLICT_DAMAGE = 5
 
 class Visibility(Enum):
     VISIBLE = 0

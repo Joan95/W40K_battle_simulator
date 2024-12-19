@@ -102,13 +102,6 @@ class Unit:
         is_visible = True in [model.is_visible for model in self.models]
         return is_visible
 
-    def deploy_unit_in_zone(self, board, zone_to_deploy):
-        log(f'\t\t[UNIT] Deploying [{self.raw_name}]')
-        board.deploy_unit(zone_to_deploy, self)
-        self.has_been_deployed = True
-        # Now that unit has been deployed, calculate its polygon
-        self.calculate_unit_centroid()
-
     def do_moral_check(self, value):
         pass
 
@@ -236,7 +229,7 @@ class Unit:
                     direction_y = target_position.y - model.position.y
                     total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
                     if total_distance > 0:
-                        step = min(self.get_unit_movement(), total_distance)
+                        step = min(self.get_unit_movement(), int(total_distance))
                         movement_x = step * (direction_x / total_distance)
                         movement_y = step * (direction_y / total_distance)
                     else:
@@ -268,6 +261,12 @@ class Unit:
         self.moral_check_passed = True
         for model in self.models:
             model.start_new_turn()
+
+    def unit_deployed(self):
+        log(f'\t\t[UNIT] [{self.raw_name}] deployed!')
+        self.has_been_deployed = True
+        # Now that unit has been deployed, calculate its polygon
+        self.calculate_unit_centroid()
 
     def update_unit_total_score(self):
         # Recalculate everything in case of model's fainted

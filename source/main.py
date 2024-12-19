@@ -4,7 +4,7 @@ from colorama import init
 from database_handler import DatabaseHandler
 from enums import PlayerRol
 from game_handler import GameHandler
-from logging_handler import *
+from logging_handler import log
 from players_army_configuration import players_army_configuration as players_cfg
 from player import Player
 from shapely.geometry import Point
@@ -96,7 +96,10 @@ def place_army_into_boardgame(turns):
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():
         player = players[player_count % len(players)]
         if player.has_units_to_deploy():
-            player.deploy_units()
+            unit = player.get_unit_to_deploy()
+            zone_to_deploy = player.get_deployment_zone()
+            board.deploy_unit(zone_to_deploy, unit)
+            unit.unit_deployed()
         player_count += 1
 
 
