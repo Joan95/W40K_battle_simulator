@@ -40,19 +40,18 @@ class AttackHandler:
     def do_attack(self):
         attacks_for_next_step = self.num_attacks
         critical_ones = 0
-        for count, step_name in enumerate(self.attack_steps, start=1):
+        for step_name in self.attack_steps:
             attack_step = self.attack_steps[step_name]
-            attacks_for_next_step, critical_ones = self.execute_attack_step(step_name, attack_step, count,
+            attacks_for_next_step, critical_ones = self.execute_attack_step(step_name, attack_step,
                                                                             attacks_for_next_step, critical_ones)
             if not attacks_for_next_step + critical_ones:
                 # There is not a single hit, just stop
                 break
 
-    def execute_attack_step(self, step_name, attack_step, step_number, num_attacks, critical):
+    def execute_attack_step(self, step_name, attack_step, num_attacks, critical):
         current_step = attack_step['main_function']
-        step_name = f'#{step_number} {step_name.replace("_", " ").title().upper()}'
-        log(f"[ATTACK step: {step_name}] Attacking model(s) [{self.attacking_model.name}] "
-            f"target unit: [{self.defender_unit.name}]",
+        step_name = step_name.replace("_", " ").title().upper()
+        log(f"\t\t----- ----- ----- {step_name}(s) ----- ----- -----",
             True)
 
         attacks_for_next_step, critical_ones = current_step(self.attacker, self.defender, self.attacking_model,

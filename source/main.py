@@ -35,8 +35,7 @@ def players_handshake(board_map, player_1, player_2):
     player_1.set_battlefield(board_map)
     player_2.set_battlefield(board_map)
     # Roll for set up the attacker and the defender
-    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Setting up the ATTACKER and the DEFENDER "
-        "----- ----- ----- ----- -----")
+    log("[REPORT][ATTACKER_DEFENDER] Setting up the ATTACKER and the DEFENDER ----- ----- ----- ----- -----")
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
@@ -65,8 +64,7 @@ def players_handshake(board_map, player_1, player_2):
 
 
 def initiatives(player_1, player_2):
-    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Deciding INITIATIVES for each PLAYER "
-        "----- ----- ----- ----- -----")
+    log("[REPORT][INITIATIVES] Deciding INITIATIVES for each PLAYER ----- ----- ----- ----- -----")
     player_1.roll_players_dice(number_of_dices=1, sides=6)
     player_2.roll_players_dice(number_of_dices=1, sides=6)
 
@@ -89,8 +87,7 @@ def initiatives(player_1, player_2):
 
 
 def place_army_into_boardgame(turns):
-    log("[REPORT]\n\t\t----- ----- ----- ----- ----- Deploying ARMY into the BATTLEFIELD "
-        "----- ----- ----- ----- -----")
+    log("[REPORT][DEPLOYMENT] Deploying ARMY into the BATTLEFIELD ----- ----- ----- ----- -----")
     player_count = 0
     players = turns[0][1]
     while players[0].has_units_to_deploy() or players[1].has_units_to_deploy():

@@ -34,9 +34,8 @@ class Dices:
                 for _ in range(self.last_roll_dice_count):
                     self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-                log(f'[{self.dice_owner}\'s dice(s)] Rolling #{self.last_roll_dice_count} dice(s) of '
-                    f'{self.last_roll_dice_sides} sides with a '
-                    f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
+                log(f'[{self.dice_owner}\'s dice(s)] Rolling {self.last_roll_dice_count}D{self.last_roll_dice_sides}'
+                    f'+{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
                     f'{self.last_roll_modifier}')
                 # Apply the modifier to the total sum of dice rolls
                 self.last_roll_dice_value = sum(self.last_roll_dice_values) + self.last_roll_modifier
@@ -50,9 +49,8 @@ class Dices:
             for _ in range(self.last_roll_dice_count):
                 self.last_roll_dice_values.append(random.randint(1, self.last_roll_dice_sides))
 
-            log(f'[{self.dice_owner}\'s dice(s)] Rolling #{self.last_roll_dice_count} dice(s) of '
-                f'{self.last_roll_dice_sides} sides with a '
-                f'modifier of +{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
+            log(f'[{self.dice_owner}\'s dice(s)] Rolling {self.last_roll_dice_count}D{self.last_roll_dice_sides}'
+                f'+{self.last_roll_modifier}. Result: {self.last_roll_dice_values} + '
                 f'{self.last_roll_modifier}')
             self.last_roll_dice_value = sum(self.last_roll_dice_values)
 

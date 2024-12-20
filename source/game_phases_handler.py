@@ -20,6 +20,8 @@ def command_phase(active_player, inactive_player, boardgame):
     """
     active_player.new_turn()
     inactive_player.new_turn()
+    log(f'[{active_player.name}] danger score of {active_player.get_army_threat_level()}')
+    log(f'[{inactive_player.name}] danger score of {inactive_player.get_army_threat_level()}')
 
 
 def command(active_player, inactive_player, boardgame):
@@ -87,6 +89,9 @@ def select_targets(active_player, inactive_player, boardgame):
     # Choose targets for that unit
     enemy_units = inactive_player.get_units_alive()
     active_player.set_target_for_selected_unit(enemy_units)
+    if not active_player.get_selected_unit().has_shoot:
+        log(f'[REPORT] [{active_player.get_selected_unit().name}] does not have any valid target near. '
+            f'It won\'t shoot this turn')
     return True
 
 

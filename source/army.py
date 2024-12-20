@@ -49,3 +49,6 @@ class Army:
 
     def get_units_available_for_shooting(self):
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged() and not unit.has_unit_advanced()]
+
+    def get_threat_level(self):
+        return self.army_threat_level

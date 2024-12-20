@@ -100,6 +100,9 @@ class Player:
                 f'own salvation of {salvation} (SV {raw_salvation}+  AP {weapon_armour_penetration})')
             return salvation
 
+    def get_army_threat_level(self):
+        return self.army.get_threat_level()
+
     def get_deployment_zone(self):
         return self.deployment_zone
 
@@ -209,7 +212,7 @@ class Player:
         self.dices.roll_dices(number_of_dices=number_of_dices, sides=sides)
 
         if show_throw:
-            log_text = f'\t[PLAYER {self.name}] rolled #{self.dices.last_roll_dice_count} dice(s) getting a: '
+            log_text = f'\t[PLAYER {self.name}] rolled {self.dices.last_roll_dice_count}D{sides} getting a: '
 
             for dice in self.dices.last_roll_dice_values:
                 adjective = random.choice(six_roll_dice_adjectives).upper() + " " if dice == 6 else ""

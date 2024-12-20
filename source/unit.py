@@ -52,12 +52,16 @@ class Unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
 
     def calculate_unit_potential_damages(self):
-        self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
-                                               model.model_impact_probability_melee_attack
-                                               for model in self.get_models_alive()) / len(self.get_models_alive())
-        self.unit_potential_ranged_damage = sum(model.model_potential_damage_ranged_attack *
-                                                model.model_impact_probability_ranged_attack
-                                                for model in self.get_models_alive()) / len(self.get_models_alive())
+        if self.get_models_alive():
+            self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
+                                                   model.model_impact_probability_melee_attack
+                                                   for model in self.get_models_alive()) / len(self.get_models_alive())
+            self.unit_potential_ranged_damage = sum(model.model_potential_damage_ranged_attack *
+                                                    model.model_impact_probability_ranged_attack
+                                                    for model in self.get_models_alive()) / len(self.get_models_alive())
+        else:
+            self.unit_potential_melee_damage = 0
+            self.unit_potential_ranged_damage = 0
 
     def calculate_unit_salvation_chance(self):
         self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.get_models_alive()) \
@@ -285,8 +289,12 @@ class Unit:
         # Warlord multiplier
         warlord_multiplier = 1.5 if self.is_warlord_in_the_unit else 1.0
 
+        # To apply calculation for models left in the unit,
+        # it is not the same to have the initial force than having its half
+        remaining_models = len(self.get_models_alive()) / self.unit_initial_force
+
         # Set threat level
-        self.unit_threat_level = self.unit_threat_level * warlord_multiplier
+        self.unit_threat_level = self.unit_threat_level * warlord_multiplier * remaining_models
 
 
 def get_distance(unit1, unit2):

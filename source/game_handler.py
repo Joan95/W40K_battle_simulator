@@ -29,7 +29,7 @@ class GameHandler:
         phase_name = f'#{phase_number} {phase_name.replace("_", " ").title().upper()}'
         if upper_phase:
             phase_name = upper_phase + ' - ' + phase_name
-        log(f"[REPORT] [TURN #{self.game_turn}] ----- ----- ----- [{self.active_player.name}] "
+        log(f"[REPORT][TURN #{self.game_turn}] ----- ----- ----- [{self.active_player.name}] "
             f"{phase_name} ----- ----- -----", True)
 
         feedback = current_phase(self.active_player, self.inactive_player, self.boardgame)

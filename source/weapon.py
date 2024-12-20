@@ -95,8 +95,8 @@ class Weapon:
         # Account for the number of attacks
         total_hit_probability = 1 - (1 - hit_probability_single_dice) ** self.get_weapon_max_num_attacks()
 
-        log(f'[WEAPON] [{self.name}] hit probability for one attack: {hit_probability_single_dice * 100:.2f}%')
-        log(f'[WEAPON] [{self.name}] hit probability for {self.num_attacks} attacks: '
+        log(f'[WEAPON][{self.name}] hit probability for one attack: {hit_probability_single_dice * 100:.2f}%')
+        log(f'[WEAPON][{self.name}] hit probability for {self.num_attacks} attacks: '
             f'{total_hit_probability * 100:.2f}%')
         return total_hit_probability
 
@@ -122,21 +122,21 @@ class Weapon:
             # If the damage is a fixed number (e.g., "4"), just use it directly
             average_damage = int(self.damage)
 
-        log(f'[WEAPON] [{self.name}] potential damage: {average_damage} per attack')
+        log(f'[WEAPON][{self.name}] potential damage: {average_damage} per attack')
         return average_damage
 
     def get_armour_penetration(self):
-        log(f'[WEAPON] {self.name} has Armour Penetration of {self.armour_penetration}')
+        log(f'[WEAPON][{self.name}] has Armour Penetration of {self.armour_penetration}')
         return self.armour_penetration
 
     def get_damage(self, dices):
         if isinstance(self.damage, str) and 'D' in self.damage:
-            log(f'[WEAPON] {self.name}\'s damage is {self.damage}. Throwing a dice for knowing the amount of damage')
+            log(f'[WEAPON][{self.name}]\'s damage is {self.damage}. Throwing a dice for knowing the amount of damage')
             dices.roll_dices('{}'.format(self.damage))
             damage = dices.last_roll_dice_value
         else:
             damage = int(self.damage)
-        log(f'[WEAPON] {self.name}\'s damage is {damage}')
+        log(f'[WEAPON][{self.name}]\'s damage is {damage}')
         return damage
 
     def get_num_attacks(self, dices):
@@ -144,11 +144,15 @@ class Weapon:
             num_attacks = dices.roll_dices(self.num_attacks)
         else:
             num_attacks = self.num_attacks
-        log(f'[WEAPON] A single {self.name} performs #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
+        log(f'[WEAPON][{self.name}] performs #{num_attacks} number of attack(s) with Ballistic Skill '
+            f'of {self.ballistic_skill}')
         return num_attacks, self.ballistic_skill
 
+    def get_raw_num_attacks(self):
+        return self.num_attacks
+
     def get_strength(self):
-        log(f'[WEAPON] {self.name}\'s strength is {self.strength}')
+        log(f'[WEAPON][{self.name}]\'s strength is {self.strength}')
         return self.strength
 
     def get_weapon_max_num_attacks(self):
