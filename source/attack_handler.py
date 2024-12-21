@@ -44,15 +44,24 @@ class AttackHandler:
         attacks_for_next_step = self.num_attacks
         critical_ones = 0
         for self.current_step in self.attack_steps:
-            self.current_attack_function = self.attack_steps[self.current_step]['main_function']
-            attacks_for_next_step, critical_ones = self.execute_attack_step(attacks_for_next_step, critical_ones)
-            if not attacks_for_next_step + critical_ones:
-                # There is not a single hit, just stop
+            if not self.defender_unit.is_destroyed:
+                self.current_attack_function = self.attack_steps[self.current_step]['main_function']
+                attacks_for_next_step, critical_ones = self.execute_attack_step(attacks_for_next_step, critical_ones)
+                if not attacks_for_next_step + critical_ones:
+                    # There is not a single hit, just stop
+                    break
+            else:
+                log(f'All models in unit {self.defender_unit.name} have died honorably, there are no '
+                    f'more models left to allocate more damage')
                 break
 
     def execute_attack_step(self, attacks_for_next_step, critical_ones):
         log(f'\t\t----- ----- ----- {self.current_step.replace("_", " ").title().upper()}(s) ----- ----- -----',
             True)
+
+        # At this point, just calculate which weapons might have some abilities
+        self.attacking_weapon.handle_weapon_abilities(self.current_step, self.attacking_model,
+                                                      self.defender_unit)
 
         attacks_for_next_step, critical_ones = self.current_attack_function(attacks_for_next_step, critical_ones)
         return attacks_for_next_step, critical_ones
@@ -70,20 +79,18 @@ class AttackHandler:
         log(f'[HIT ROLL(s)] there are #{num_shoots} [{self.attacking_weapon.name}] being shoot. Attack(s) '
             f'{self.attacking_weapon.get_raw_num_attacks()}')
 
-        num_shoots_increment = self.attacking_weapon.handle_weapon_abilities(self.current_step, self.attacking_model,
-                                                                             self.defender_unit)
-
-        if num_shoots_increment:
-            num_shoots_increment = int(num_shoots_increment)
-        else:
-            num_shoots_increment = 0
+        # Handle num_attacks_modifier: Blast, ...
+        number_of_extra_attacks = 0
+        for ability in self.attacking_weapon.abilities:
+            number_of_extra_attacks += ability.number_of_attacks_modifier
+            number_of_extra_attacks += ability.attack_modifier
 
         weapon_num_attacks, weapon_ballistic_skill = self.attacking_weapon.get_num_attacks(self.attacker.dices)
-        total_attacks = (num_shoots + num_shoots_increment) * weapon_num_attacks
+        total_attacks = num_shoots * (weapon_num_attacks + number_of_extra_attacks)
 
         log(f'[HIT ROLL(s)][{self.attacking_weapon.name}] #{total_attacks} attack(s) will success at '
-            f'{weapon_ballistic_skill}+ [(Base shoots {num_shoots} + Weapon Ability {num_shoots_increment}) x '
-            f'Weapon Num Attacks {weapon_num_attacks}]')
+            f'{weapon_ballistic_skill}+ [Number of weapons {num_shoots} x [Weapon Num Attacks {weapon_num_attacks} + '
+            f'Weapon Ability extra num. attacks {number_of_extra_attacks}]]')
         self.attacker.dices.roll_dices(number_of_dices='{}D6'.format(total_attacks))
         hits = self.attacker.dices.last_roll_dice_values
         successful_hits = list()

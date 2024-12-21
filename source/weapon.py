@@ -17,13 +17,21 @@ class WeaponAbility:
         self.attack_step = None
         self.model = None
         self.weapon = None
+        self.number_of_attacks_modifier = None
+        self.attack_modifier = None
+        self.impact_roll_modifier = None
+        self.generate_critics = False
 
     def check_for_weapon_ability(self, weapon, attack_step, model, enemy_target):
         self.attack_step = attack_step
         self.model = model
         self.weapon = weapon
-        modifier = None
+        self.number_of_attacks_modifier = 0
+        self.attack_modifier = 0
+        self.impact_roll_modifier = 0
+        self.generate_critics = False
         ability_name = self.name
+        modifier = None
 
         # Define a dictionary where keys are abilities and values are their handler functions
         ability_handlers = {
@@ -50,11 +58,9 @@ class WeaponAbility:
 
         if handler:
             # Execute the handler and get the modifier
-            modifier = handler()
+            handler()
         else:
             log(f'[WARNING] Unknown weapon ability: {self.name}')
-
-        return modifier
 
     def handle_anti_infantry_ability(self, x):
         pass
@@ -68,10 +74,13 @@ class WeaponAbility:
         return None
 
     def handle_blast_ability(self, enemy_target):
-        modifier = len(enemy_target.get_models_alive()) % 5
-        log(f'[{self.model.name}] [{self.name}] ability: additional attacks against large units. '
-            f'[{enemy_target.name}] has {len(enemy_target.get_models_alive())} models, attack modifier +{modifier}')
-        return modifier
+        # Ability only applicable in HIT_ROLL step
+        if self.attack_step == AttackSteps.HIT_ROLL.name:
+            modifier = len(enemy_target.get_models_alive()) % 5
+            log(f'[{self.model.name}][{self.weapon.name}][{self.name}] ability: additional attacks against large '
+                f'units. [{enemy_target.name}] has {len(enemy_target.get_models_alive())} models, '
+                f'number of attack(s) modifier +{modifier}')
+            self.number_of_attacks_modifier += modifier
 
     def handle_devastating_wounds_ability(self):
         pass
@@ -80,12 +89,13 @@ class WeaponAbility:
         pass
 
     def handle_heavy_ability(self):
-        if not self.model.has_moved_this_turn():
-            log(f'[{self.model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
-            return 1  # Modifier for the impact roll
-        else:
-            log(f'[{self.model.name}] moved this turn, HEAVY ability cannot be applied.')
-            return 0  # No modifier
+        # Ability only applicable in HIT_ROLL step
+        if self.attack_step == AttackSteps.HIT_ROLL.name:
+            if not self.model.has_moved_this_turn():
+                log(f'[{self.model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
+                self.impact_roll_modifier += 1
+            else:
+                log(f'[{self.model.name}] moved this turn, HEAVY ability cannot be applied.')
 
     def handle_pistol_ability(self):
         pass
@@ -104,10 +114,7 @@ class WeaponAbility:
             if weapon_range / 2 >= self.weapon.target_distance:
                 log(f'[{self.model.name}] [{self.name}] ability: weapon range {weapon_range}", distance to target '
                     f'{self.weapon.target_distance}". Applying [{self.name}] ability: +{modifier} attack(s).')
-                return modifier  # Modifier for the impact roll
-            else:
-                return 0
-        pass
+                self.attack_modifier += modifier
 
     def handle_sustained_hits_ability(self, x):
         pass
@@ -269,8 +276,7 @@ class RangedWeapon(Weapon):
 
     def handle_weapon_abilities(self, attack_step, model, enemy_target):
         for ability in self.abilities:
-            modifier = ability.check_for_weapon_ability(self, attack_step, model, enemy_target)
-        return modifier
+            ability.check_for_weapon_ability(self, attack_step, model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
