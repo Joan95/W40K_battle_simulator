@@ -1,7 +1,15 @@
+from attack_handler import AttackHandler
 from colorama import Fore
 from enums import ChargePhase, CommandPhase, FightPhase, GamePhase, MovementPhase, RemainingCombats, ShootingPhase
-from game_phases_handler import *
 from logging_handler import log
+"""
+    WARHAMMER 40K 10th edition:
+    1 - COMMAND PHASE
+    2 - MOVEMENT PHASE
+    3 - SHOOTING PHASE
+    4 - CHARGE PHASE
+    5 - FIGHT PHASE
+"""
 
 
 class GameHandler:
@@ -12,6 +20,8 @@ class GameHandler:
         self.turns_list = turns
         self.game_turn = 0
         self.phases = dict()
+        # Attack resolver handler
+        self.resolve_attack = AttackHandler(self.boardgame)
 
         # If here all the Units have been displayed so the game can start!
         self.boardgame.start_game()
@@ -32,7 +42,7 @@ class GameHandler:
         log(f"[REPORT][TURN #{self.game_turn}] ----- ----- ----- [{self.active_player.name}] "
             f"{phase_name} ----- ----- -----", True)
 
-        feedback = current_phase(self.active_player, self.inactive_player, self.boardgame)
+        feedback = current_phase()
 
         if 'sub_functions' in phase_dict:
             sub_phase_dict = phase_dict['sub_functions']
@@ -63,11 +73,11 @@ class GameHandler:
 
     def load_game_phases_and_steps(self):
         phase_functions = {
-            GamePhase.COMMAND_PHASE.name: command_phase,
-            GamePhase.MOVEMENT_PHASE.name: movement_phase,
-            GamePhase.SHOOTING_PHASE.name: shooting_phase,
-            GamePhase.CHARGE_PHASE.name: charge_phase,
-            GamePhase.FIGHT_PHASE.name: fight_phase
+            GamePhase.COMMAND_PHASE.name: self.command_phase,
+            GamePhase.MOVEMENT_PHASE.name: self.movement_phase,
+            GamePhase.SHOOTING_PHASE.name: self.shooting_phase,
+            GamePhase.CHARGE_PHASE.name: self.charge_phase,
+            GamePhase.FIGHT_PHASE.name: self.fight_phase
         }
 
         """
@@ -77,10 +87,10 @@ class GameHandler:
         """
         command_phase_functions = {
             CommandPhase.COMMAND_STEP.name: {
-                'main_function': command
+                'main_function': self.command
             },
             CommandPhase.BATTLE_SHOCK_STEP.name: {
-                'main_function': battle_shock
+                'main_function': self.battle_shock
             },
         }
 
@@ -91,10 +101,10 @@ class GameHandler:
         """
         movement_phase_functions = {
             MovementPhase.MOVE_UNITS.name: {
-                'main_function': move_units
+                'main_function': self.move_units
             },
             MovementPhase.REINFORCEMENTS.name: {
-                'main_function': reinforcements
+                'main_function': self.reinforcements
             },
         }
 
@@ -107,16 +117,16 @@ class GameHandler:
         """
         shooting_phase_functions = {
             ShootingPhase.SELECT_ELIGIBLE_UNIT.name: {
-                'main_function': select_eligible_unit
+                'main_function': self.select_eligible_unit
             },
             ShootingPhase.SELECT_TARGETS.name: {
-                'main_function': select_targets
+                'main_function': self.select_targets
             },
             ShootingPhase.MAKE_RANGED_ATTACKS.name: {
-                'main_function': make_ranged_attacks
+                'main_function': self.make_ranged_attacks
             },
             ShootingPhase.REPEAT_FOR_NEXT_ELIGIBLE_UNIT.name: {
-                'main_function': repeat_for_next_eligible_unit
+                'main_function': self.repeat_for_next_eligible_unit
             },
         }
 
@@ -130,16 +140,16 @@ class GameHandler:
         """
         charge_phase_functions = {
             ChargePhase.SELECT_ELIGIBLE_UNIT.name: {
-                'main_function': select_eligible_unit
+                'main_function': self.select_eligible_unit
             },
             ChargePhase.SELECT_TARGETS.name: {
-                'main_function': select_targets
+                'main_function': self.select_targets
             },
             ChargePhase.MAKE_CHARGE_ROLL.name: {
-                'main_function': make_charge_roll
+                'main_function': self.make_charge_roll
             },
             ChargePhase.REPEAT_FOR_NEXT_ELIGIBLE_UNIT.name: {
-                'main_function': repeat_for_next_eligible_unit
+                'main_function': self.repeat_for_next_eligible_unit
             },
         }
 
@@ -153,10 +163,10 @@ class GameHandler:
         """
         fight_phase_functions = {
             FightPhase.FIGHTS_FIRST.name: {
-                'main_function': fight_first
+                'main_function': self.fight_first
             },
             FightPhase.REMAINING_COMBATS.name: {
-                'main_function': remaining_combats
+                'main_function': self.remaining_combats
             },
         }
 
@@ -170,13 +180,13 @@ class GameHandler:
         """
         remaining_combats_functions = {
             RemainingCombats.PILE_IN.name: {
-                'main_function': pile_in
+                'main_function': self.pile_in
             },
             RemainingCombats.MAKE_MELEE_ATTACKS.name: {
-                'main_function': make_melee_attacks
+                'main_function': self.make_melee_attacks
             },
             RemainingCombats.CONSOLIDATE.name: {
-                'main_function': consolidate
+                'main_function': self.consolidate
             },
         }
 
@@ -197,3 +207,143 @@ class GameHandler:
                 self.phases[phase_name]['sub_functions'] = fight_phase_functions
                 self.phases[phase_name]['sub_functions'][FightPhase.REMAINING_COMBATS.name]['sub_functions'] = \
                     remaining_combats_functions
+
+    def command_phase(self):
+        """
+            1 - COMMAND PHASE
+                1 - COMMAND
+                2 - BATTLE-SHOCK
+        """
+        self.active_player.new_turn()
+        self.inactive_player.new_turn()
+        log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}')
+        log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}')
+
+    def command(self):
+        # Now increase command points for each one
+        self.active_player.increment_command_points()
+        self.inactive_player.increment_command_points()
+        return True
+
+    def battle_shock(self):
+        for unit in self.active_player.get_units_alive():
+            if len(unit.models) < unit.unit_initial_force / 2:
+                log(f"[REPORT] Unit {unit.name} at half of its initial force, "
+                    f"will have to throw the dices for checking its moral", True)
+                self.active_player.roll_dice()
+                unit.do_moral_check(self.active_player.last_roll_dice)
+        return True
+
+    def movement_phase(self):
+        """
+            2 - MOVEMENT PHASE
+                1 - MOVE UNITS
+                2 - REINFORCEMENTS
+        """
+        # Get enemy's alive units
+        enemy_units = self.inactive_player.get_units_alive()
+
+        for unit in self.active_player.army.get_units_available_for_moving():
+            # Force units to target enemies based on its score
+            unit.chase_enemies(enemy_units)
+        return True
+
+    def move_units(self):
+        # TODO: Check whether it's worth advancing or we might want to shoot instead
+        self.active_player.move_units()
+        self.boardgame.display_board()
+        return True
+
+    def reinforcements(self):
+        log(f'[REPORT] [{self.active_player.name}] has no more units to be placed. '
+            f'Not expecting further reinforcements')
+        return True
+
+    def shooting_phase(self):
+        """
+            3 - SHOOTING PHASE
+                1 - SELECT ELIGIBLE UNIT
+                2 - SELECT TARGETS
+                3 - MAKE RANGED ATTACKS
+                4 - REPEAT FOR NEXT ELIGIBLE UNIT
+        """
+        self.active_player.set_units_for_shooting()
+        return True
+
+    def select_eligible_unit(self):
+        self.active_player.set_next_unit_for_shooting()
+        log(f'[REPORT] [{self.active_player.name}] selects unit: [{self.active_player.get_selected_unit().name}]')
+        return True
+
+    def select_targets(self):
+        # Choose targets for that unit
+        enemy_units = self.inactive_player.get_units_alive()
+        self.active_player.set_target_for_selected_unit(enemy_units)
+        if not self.active_player.get_selected_unit().has_shoot:
+            log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target near. '
+                f'It won\'t shoot this turn')
+        return True
+
+    def make_ranged_attacks(self):
+        selected_unit = self.active_player.get_selected_unit()
+        # At least one model can shoot a target
+        if selected_unit.has_shoot:
+            attacks = selected_unit.get_models_ranged_attacks()
+
+            for count, attack in enumerate(attacks, start=1):
+                log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
+                self.resolve_attack.set_new_attack(self.active_player, self.inactive_player, attacks[attack])
+                self.resolve_attack.do_attack()
+        else:
+            log(f'\t[PLAYER {self.active_player.name}] [{selected_unit.name}] will not shoot since '
+                f'it does not see anything')
+
+    def repeat_for_next_eligible_unit(self):
+        # Check if there are more units to be selected
+        if self.active_player.are_more_units_to_be_selected():
+            # Keep on executing the main loop since there are more units to come!
+            return False
+        else:
+            # We are done so far
+            return True
+
+    def charge_phase(self):
+        """
+            4 - CHARGE PHASE
+                1 - SELECT ELIGIBLE UNIT
+                2 - SELECT TARGETS
+                3 - MAKE CHARGE ROLL
+                4 - MAKE CHARGE MOVE
+                5 - REPEAT FOR NEXT ELIGIBLE UNIT
+        """
+        self.active_player.set_units_for_charge()
+        return True
+
+    def make_charge_roll(self):
+        return True
+
+    def fight_phase(self):
+        """
+            5 - FIGHT PHASE
+                1 - FIGHTS FIRST
+                2 - REMAINING COMBATS
+                    1 - PILE IN
+                    2 - MAKE MELEE ATTACKS
+                    3 - CONSOLIDATE
+        """
+        return True
+
+    def fight_first(self):
+        return True
+
+    def remaining_combats(self):
+        return True
+
+    def pile_in(self):
+        return True
+
+    def make_melee_attacks(self):
+        return True
+
+    def consolidate(self):
+        return True

@@ -14,8 +14,12 @@ def set_abilities(abilities):
 class WeaponAbility:
     def __init__(self, name):
         self.name = name
+        self.attack_step = None
+        self.model = None
 
-    def check_for_weapon_ability(self, model, enemy_target):
+    def check_for_weapon_ability(self, attack_step, model, enemy_target):
+        self.attack_step = attack_step
+        self.model = model
         modifier = None
         ability_name = self.name
 
@@ -23,13 +27,20 @@ class WeaponAbility:
         ability_handlers = {
             'Anti-infantry 4': lambda: self.handle_anti_infantry_ability(4),
             'Anti-monster 4': lambda: self.handle_anti_monster_ability(4),
-            'Anti-vehicle 3': lambda: self.handle_anti_vehicle_ability(model, 3),
-            'Anti-vehicle 4': lambda: self.handle_anti_vehicle_ability(model, 4),
-            'Blast': lambda: self.handle_blast_ability(model, enemy_target),
+            'Anti-vehicle 3': lambda: self.handle_anti_vehicle_ability(3),
+            'Anti-vehicle 4': lambda: self.handle_anti_vehicle_ability(4),
+            'Blast': lambda: self.handle_blast_ability(enemy_target),
             'Devastating Wounds': lambda: self.handle_devastating_wounds_ability(),
             'Extra Attacks': lambda: self.handle_extra_attacks_ability(),
-            'Heavy': lambda: self.handle_heavy_ability(model),
-            # Add more abilities here as needed
+            'Heavy': lambda: self.handle_heavy_ability(),
+            'Pistol': lambda: self.handle_pistol_ability(),
+            'Precision': lambda: self.handle_precision_ability(),
+            'Psychic': lambda: self.handle_psychic_ability(),
+            'Rapid Fire 1': lambda: self.handle_rapid_fire_ability(1),
+            'Rapid Fire 2': lambda: self.handle_rapid_fire_ability(2),
+            'Sustained Hits 1': lambda: self.handle_sustained_hits_ability(1),
+            'Sustained Hits 2': lambda: self.handle_sustained_hits_ability(2),
+            'Twin-linked': lambda: self.handle_twin_linked_ability(),
         }
 
         # Get the corresponding handler function for the ability
@@ -43,35 +54,53 @@ class WeaponAbility:
 
         return modifier
 
-    def handle_extra_attacks_ability(self):
-        pass
-
-    def handle_heavy_ability(self, model):
-        if not model.has_moved_this_turn():
-            log(f'[{model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
-            return 1  # Modifier for the impact roll
-        else:
-            log(f'[{model.name}] moved this turn, HEAVY ability cannot be applied.')
-            return 0  # No modifier
-
     def handle_anti_infantry_ability(self, x):
         pass
 
     def handle_anti_monster_ability(self, x):
         pass
 
-    def handle_anti_vehicle_ability(self, model, x):
-        log(f'[{model.name}] applies ANTI-VEHICLE ability: improved effectiveness against vehicles.')
+    def handle_anti_vehicle_ability(self, x):
+        log(f'[{self.model.name}] applies ANTI-VEHICLE ability: improved effectiveness against vehicles.')
         # Implement anti-vehicle logic here
         return None
 
-    def handle_blast_ability(self, model, enemy_target):
+    def handle_blast_ability(self, enemy_target):
         modifier = len(enemy_target.get_models_alive()) % 5
-        log(f'[{model.name}] [{self.name}] ability: additional attacks against large units. '
+        log(f'[{self.model.name}] [{self.name}] ability: additional attacks against large units. '
             f'[{enemy_target.name}] has {len(enemy_target.get_models_alive())} models, attack modifier +{modifier}')
         return modifier
 
     def handle_devastating_wounds_ability(self):
+        pass
+
+    def handle_extra_attacks_ability(self):
+        pass
+
+    def handle_heavy_ability(self):
+        if not self.model.has_moved_this_turn():
+            log(f'[{self.model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
+            return 1  # Modifier for the impact roll
+        else:
+            log(f'[{self.model.name}] moved this turn, HEAVY ability cannot be applied.')
+            return 0  # No modifier
+
+    def handle_pistol_ability(self):
+        pass
+
+    def handle_precision_ability(self):
+        pass
+
+    def handle_psychic_ability(self):
+        pass
+
+    def handle_rapid_fire_ability(self, x):
+        pass
+
+    def handle_sustained_hits_ability(self, x):
+        pass
+
+    def handle_twin_linked_ability(self):
         pass
 
 
@@ -191,9 +220,9 @@ class MeleeWeapon(Weapon):
     def get_strength(self):
         return super().get_strength()
 
-    def handle_weapon_abilities(self, model, enemy_target):
+    def handle_weapon_abilities(self, attack_step, model, enemy_target):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(model, enemy_target)
+            ability.check_for_weapon_ability(attack_step, model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
@@ -226,9 +255,9 @@ class RangedWeapon(Weapon):
     def get_strength(self):
         return super().get_strength()
 
-    def handle_weapon_abilities(self, model, enemy_target):
+    def handle_weapon_abilities(self, attack_step, model, enemy_target):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(model, enemy_target)
+            ability.check_for_weapon_ability(attack_step, model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'

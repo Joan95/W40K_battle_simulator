@@ -154,7 +154,10 @@ class Unit:
     def get_next_model_to_die(self):
         # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
         alive_models = self.get_models_alive()
-        return min(alive_models, key=lambda model: model.priority_to_die)
+        if alive_models:
+            return min(alive_models, key=lambda model: model.priority_to_die)
+        else:
+            return None
 
     def get_models_alive(self):
         return [model for model in self.models if model.is_alive]
