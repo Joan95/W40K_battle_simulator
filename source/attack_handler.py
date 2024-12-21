@@ -1,4 +1,4 @@
-from enums import AttackStrength, ResolveAttackSteps
+from enums import AttackSteps, AttackStrength
 from logging_handler import log
 
 """
@@ -29,11 +29,11 @@ class AttackHandler:
 
     def load_attack_steps(self):
         attack_steps = {
-            ResolveAttackSteps.HIT_ROLL.name: self.hit_roll,
-            ResolveAttackSteps.WOUND_ROLL.name: self.wound_roll,
-            ResolveAttackSteps.ALLOCATE_ATTACK.name: self.allocate_attack,
-            ResolveAttackSteps.SAVING_THROW.name: self.saving_throw,
-            ResolveAttackSteps.INFLICT_DAMAGE.name: self.inflict_damage,
+            AttackSteps.HIT_ROLL.name: self.hit_roll,
+            AttackSteps.WOUND_ROLL.name: self.wound_roll,
+            AttackSteps.ALLOCATE_ATTACK.name: self.allocate_attack,
+            AttackSteps.SAVING_THROW.name: self.saving_throw,
+            AttackSteps.INFLICT_DAMAGE.name: self.inflict_damage,
         }
         for step_name, function in attack_steps.items():
             self.attack_steps[step_name] = {

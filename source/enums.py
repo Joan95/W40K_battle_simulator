@@ -113,7 +113,7 @@ class PlayerRol(Enum):
     DEFENDER = 1
 
 
-class ResolveAttackSteps(Enum):
+class AttackSteps(Enum):
     """
         1 - HIT ROLL
         2 - WOUND ROLL

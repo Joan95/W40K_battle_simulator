@@ -1,4 +1,4 @@
-from enums import WeaponType
+from enums import AttackSteps, WeaponType
 from logging_handler import log
 
 MAX_THROW_D6 = 6
@@ -16,10 +16,12 @@ class WeaponAbility:
         self.name = name
         self.attack_step = None
         self.model = None
+        self.weapon = None
 
-    def check_for_weapon_ability(self, attack_step, model, enemy_target):
+    def check_for_weapon_ability(self, weapon, attack_step, model, enemy_target):
         self.attack_step = attack_step
         self.model = model
+        self.weapon = weapon
         modifier = None
         ability_name = self.name
 
@@ -94,7 +96,17 @@ class WeaponAbility:
     def handle_psychic_ability(self):
         pass
 
-    def handle_rapid_fire_ability(self, x):
+    def handle_rapid_fire_ability(self, modifier):
+        # Ability only applicable in HIT_ROLL step
+        if self.attack_step == AttackSteps.HIT_ROLL.name:
+            # Check for distance between model and enemy unit
+            weapon_range = self.weapon.get_weapon_range_attack()
+            if weapon_range / 2 >= self.weapon.target_distance:
+                log(f'[{self.model.name}] [{self.name}] ability: weapon range {weapon_range}", distance to target '
+                    f'{self.weapon.target_distance}". Applying [{self.name}] ability: +{modifier} attack(s).')
+                return modifier  # Modifier for the impact roll
+            else:
+                return 0
         pass
 
     def handle_sustained_hits_ability(self, x):
@@ -222,7 +234,7 @@ class MeleeWeapon(Weapon):
 
     def handle_weapon_abilities(self, attack_step, model, enemy_target):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(attack_step, model, enemy_target)
+            ability.check_for_weapon_ability(self, attack_step, model, enemy_target)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
@@ -257,7 +269,8 @@ class RangedWeapon(Weapon):
 
     def handle_weapon_abilities(self, attack_step, model, enemy_target):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(attack_step, model, enemy_target)
+            modifier = ability.check_for_weapon_ability(self, attack_step, model, enemy_target)
+        return modifier
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
