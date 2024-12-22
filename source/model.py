@@ -177,7 +177,7 @@ class Model:
             self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack
 
         # Define a threshold for "balanced" (you can adjust this threshold based on your needs)
-        threshold = 0.2  # This can be adjusted to determine how close the scores need to be
+        threshold = 0.75  # This can be adjusted to determine how close the scores need to be
 
         # If the melee and ranged scores are within the threshold, it's a balanced model
         if abs(self.model_melee_score - self.model_ranged_score) <= threshold:

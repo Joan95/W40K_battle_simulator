@@ -64,6 +64,8 @@ class GameHandler:
             self.active_player = attacker
             self.inactive_player = defender
             if len(self.active_player.get_units_alive()) > 0:
+                log(f'[REPORT][{self.active_player.name}] Units left: {len(self.active_player.get_units_alive())}', True)
+                log(f'[REPORT][{self.inactive_player.name}] Units left: {len(self.inactive_player.get_units_alive())}', True)
                 log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
                 log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}',
                     True)
@@ -77,9 +79,11 @@ class GameHandler:
             self.active_player = defender
             self.inactive_player = attacker
             if len(self.inactive_player.get_units_alive()) > 0:
-                log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
+                log(f'[REPORT][{self.inactive_player.name}] Units left: {len(self.inactive_player.get_units_alive())}', True)
+                log(f'[REPORT][{self.active_player.name}] Units left: {len(self.active_player.get_units_alive())}', True)
                 log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}',
                     True)
+                log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
                 self.execute_all_phases()
             else:
                 log(f"[REPORT] Player {self.active_player.raw_name} has not more units left. End of the game.")
