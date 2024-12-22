@@ -9,8 +9,8 @@ from unit import Unit
 from weapon import MeleeWeapon, RangedWeapon
 
 # Constants for bold text
-bold_on = "\033[1m"
-bold_off = "\033[0m"
+BOLD_ON = "\033[1m"
+BOLD_OFF = "\033[0m"
 
 # List of adjectives for a six-roll dice
 six_roll_dice_adjectives = [
@@ -47,7 +47,7 @@ class Player:
         self.rol = None
         self.user_color = random.choice(colors_list)
         self.raw_name = name
-        self.name = f"{self.user_color}{bold_on}{self.raw_name}{bold_off}{Fore.RESET}"
+        self.name = f"{self.user_color}{BOLD_ON}{self.raw_name}{BOLD_OFF}{Fore.RESET}"
 
         """
             1 - COMMAND PHASE
@@ -230,11 +230,11 @@ class Player:
 
     def set_detachment(self, detachment):
         """Set the player's detachment."""
-        self.detachment = f"{bold_on}{self.factions_color}{detachment}{Fore.RESET}{bold_off}"
+        self.detachment = f"{BOLD_ON}{self.factions_color}{detachment}{Fore.RESET}{BOLD_OFF}"
 
     def set_faction(self, faction_cfg):
         """Set the player's faction."""
-        self.faction = f"{bold_on}{self.factions_color}{faction_cfg}{Fore.RESET}{bold_off}"
+        self.faction = f"{BOLD_ON}{self.factions_color}{faction_cfg}{Fore.RESET}{BOLD_OFF}"
 
     def set_next_unit_for_shooting(self):
         self.selected_unit = None

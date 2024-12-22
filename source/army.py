@@ -1,8 +1,3 @@
-# Constants for bold text
-BOLD_ON = "\033[1m"
-BOLD_OFF = "\033[0m"
-
-
 class Army:
     def __init__(self):
         self.warlord = None
