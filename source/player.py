@@ -74,9 +74,9 @@ class Player:
 
     def are_more_units_to_be_selected(self):
         if self.unit_idx < len(self.units_selection_list):
-            log(f'\t[PLAYER {self.name}] there are still units left')
+            log(f'\t[PLAYER {self.name}] there are still units left to be selected')
             return True
-        log(f'\t[PLAYER {self.name}] no more units left')
+        log(f'\t[PLAYER {self.name}] no more units left to be selected')
         return False
 
     def calculate_model_salvation(self, model_attacked, weapon_armour_penetration):

@@ -63,13 +63,30 @@ class GameHandler:
             # Execute Attacker phase
             self.active_player = attacker
             self.inactive_player = defender
-            self.execute_all_phases()
+            if len(self.active_player.get_units_alive()) > 0:
+                log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
+                log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}',
+                    True)
+                self.execute_all_phases()
+            else:
+                log(f"[REPORT] Player {self.active_player.raw_name} has not more units left. End of the game.")
+                break
+
 
             # Execute Defender phase
             self.active_player = defender
             self.inactive_player = attacker
-            self.execute_all_phases()
+            if len(self.inactive_player.get_units_alive()) > 0:
+                log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
+                log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}',
+                    True)
+                self.execute_all_phases()
+            else:
+                log(f"[REPORT] Player {self.active_player.raw_name} has not more units left. End of the game.")
+                break
             print()
+        log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}', True)
+        log(f'[{self.inactive_player.name}] danger score of {self.inactive_player.get_army_threat_level()}', True)
 
     def load_game_phases_and_steps(self):
         phase_functions = {

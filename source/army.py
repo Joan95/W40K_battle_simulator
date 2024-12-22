@@ -25,10 +25,6 @@ class Army:
         """Check and count units left to be deployed."""
         return sum(1 for unit in self.units if not unit.has_been_deployed)
 
-    def deploy_unit(self, battlefield, deployment_zone):
-        unit_to_deploy = self.get_unit_to_deploy()
-        unit_to_deploy.deploy_unit_in_zone(battlefield, deployment_zone)
-
     def get_unit_to_deploy(self):
         if self.check_units_left_to_deploy() > 0:
             for unit in self.units:
@@ -36,7 +32,7 @@ class Army:
                     return unit
 
     def get_units_alive(self):
-        return [unit for unit in self.units if not unit.is_destroyed]
+        return [unit for unit in self.units if unit.is_alive]
 
     def get_units_available_for_advancing(self):
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]

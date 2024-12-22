@@ -44,7 +44,7 @@ class AttackHandler:
         attacks_for_next_step = self.num_attacks
         critical_ones = 0
         for self.current_step in self.attack_steps:
-            if not self.defender_unit.is_destroyed:
+            if self.defender_unit.is_alive:
                 self.current_attack_function = self.attack_steps[self.current_step]['main_function']
                 attacks_for_next_step, critical_ones = self.execute_attack_step(attacks_for_next_step, critical_ones)
                 if not attacks_for_next_step + critical_ones:
@@ -59,10 +59,6 @@ class AttackHandler:
         log(f'\t\t----- ----- ----- {self.current_step.replace("_", " ").title().upper()}(s) ----- ----- -----',
             True)
 
-        # At this point, just calculate which weapons might have some abilities
-        self.attacking_weapon.handle_weapon_abilities(self.current_step, self.attacking_model,
-                                                      self.defender_unit)
-
         attacks_for_next_step, critical_ones = self.current_attack_function(attacks_for_next_step, critical_ones)
         return attacks_for_next_step, critical_ones
 
@@ -74,23 +70,36 @@ class AttackHandler:
         self.defender_unit = attacks['target']
         self.num_attacks = attacks['count']
 
-    def hit_roll(self, num_shoots, critical):
+    def hit_roll(self, num_shoots, critical_attacks):
         # Get weapon number of attacks to do
         log(f'[HIT ROLL(s)] there are #{num_shoots} [{self.attacking_weapon.name}] being shoot. Attack(s) '
             f'{self.attacking_weapon.get_raw_num_attacks()}')
 
-        # Handle num_attacks_modifier: Blast, ...
+        # At this point, just calculate which weapons might have some abilities
+        self.attacking_weapon.handle_weapon_abilities(self.current_step, self.attacking_model,
+                                                      self.defender_unit, critical_attacks)
+
+        # Handle num_attacks_modifier: Blast, Rapid Fire X, Heavy ...
+        abilities_to_be_applied = list()
         number_of_extra_attacks = 0
         for ability in self.attacking_weapon.abilities:
-            number_of_extra_attacks += ability.number_of_attacks_modifier
-            number_of_extra_attacks += ability.attack_modifier
+            if ability.can_be_applied:
+                abilities_to_be_applied.append(ability.name)
+                number_of_extra_attacks += ability.number_of_extra_attacks
 
         weapon_num_attacks, weapon_ballistic_skill = self.attacking_weapon.get_num_attacks(self.attacker.dices)
         total_attacks = num_shoots * (weapon_num_attacks + number_of_extra_attacks)
 
-        log(f'[HIT ROLL(s)][{self.attacking_weapon.name}] #{total_attacks} attack(s) will success at '
-            f'{weapon_ballistic_skill}+ [Number of weapons {num_shoots} x [Weapon Num Attacks {weapon_num_attacks} + '
-            f'Weapon Ability extra num. attacks {number_of_extra_attacks}]]')
+        if abilities_to_be_applied:
+            log(f'[HIT ROLL(s)][{self.attacking_weapon.name}][Weapons #{num_shoots} x '
+                f'(Attack(s) per Weapon {weapon_num_attacks} + '
+                f'([{", ".join(ability for ability in abilities_to_be_applied)}] +{number_of_extra_attacks}))] '
+                f'generated a total of #{total_attacks} attack(s) that will success at {weapon_ballistic_skill}+ ')
+        else:
+            log(f'[HIT ROLL(s)][{self.attacking_weapon.name}][Weapons #{num_shoots} x '
+                f'Attack(s) per Weapon {weapon_num_attacks}] generated a total of #{total_attacks} attack(s) that '
+                f'will success at {weapon_ballistic_skill}+ ')
+
         self.attacker.dices.roll_dices(number_of_dices='{}D6'.format(total_attacks))
         hits = self.attacker.dices.last_roll_dice_values
         successful_hits = list()
@@ -107,9 +116,17 @@ class AttackHandler:
     def wound_roll(self, successful_hits, critical_hits):
         num_hits = successful_hits + critical_hits
         if num_hits:
-            num_shoots_increment = self.attacking_weapon.handle_weapon_abilities(self.current_step,
-                                                                                 self.attacking_model,
-                                                                                 self.defender_unit)
+            # At this point, just calculate which weapons might have some abilities
+            self.attacking_weapon.handle_weapon_abilities(self.current_step, self.attacking_model,
+                                                          self.defender_unit, critical_hits)
+
+            # Handle num_attacks_modifier: Blast, Rapid Fire X, Heavy ...
+            abilities_to_be_applied = list()
+            number_of_extra_hits = 0
+            for ability in self.attacking_weapon.abilities:
+                if ability.can_be_applied:
+                    abilities_to_be_applied.append(ability.name)
+                    number_of_extra_hits += ability.number_of_extra_hits
 
             weapon_strength = self.attacking_weapon.get_strength()
 
@@ -128,9 +145,15 @@ class AttackHandler:
                     if weapon_strength * 2 <= enemy_toughness:
                         weapon_attack_strength = AttackStrength.DOUBLE_STRONG.value
 
-            log(f'[WOUND ROLL(s)][{self.attacking_weapon.name}] #{num_hits} hit(s) will success at '
+            if abilities_to_be_applied:
+                log(f'[WOUND ROLL(s)][{self.attacking_weapon.name}] Basic hit(s) #{num_hits} '
+                    f'(+{number_of_extra_hits} [{", ".join(ability for ability in abilities_to_be_applied)}]) that '
+                    f'will success at {weapon_attack_strength}\'s')
+            else:
+                log(f'[WOUND ROLL(s)][{self.attacking_weapon.name}] #{num_hits} hit(s) that will success at '
                 f'{weapon_attack_strength}\'s')
-            self.attacker.dices.roll_dices(number_of_dices='{}D6'.format(num_hits))
+
+            self.attacker.dices.roll_dices(number_of_dices='{}D6'.format(num_hits + number_of_extra_hits))
             wounds = self.attacker.dices.last_roll_dice_values
             successful_wounds = list()
             critical_wounds = 0

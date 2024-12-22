@@ -27,7 +27,7 @@ class Unit:
         self.models = models
         self.is_warlord_in_the_unit = self.check_if_warlord_in_unit()
         self.moral_check_passed = True
-        self.is_destroyed = False
+        self.is_alive = True
         self.is_engaged = False
         self.is_unit_visible = self.check_unit_visibility()
         self.has_been_deployed = False
@@ -160,7 +160,12 @@ class Unit:
             return None
 
     def get_models_alive(self):
-        return [model for model in self.models if model.is_alive]
+        models_left = [model for model in self.models if model.is_alive]
+        if not models_left:
+            log(f'[UNIT][{self.name}] has been completely destroyed')
+            self.is_alive = False
+        return models_left
+
 
     def get_models_ranged_attacks(self):
         shooting_dict = dict()
@@ -227,7 +232,7 @@ class Unit:
         return False
 
     def move_towards_target(self, board_map):
-        if not self.targeted_enemy_unit.is_destroyed:
+        if self.targeted_enemy_unit.is_alive:
             target_position = self.targeted_enemy_unit.get_unit_centroid()
 
             for model in self.get_models_alive():
