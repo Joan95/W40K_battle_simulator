@@ -76,6 +76,7 @@ class Model:
         self.weapons = list(weapons)
 
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
+        self.has_advanced = False
         self.has_moved = False
         self.is_warlord = is_warlord
         self.is_alive = True
@@ -197,10 +198,12 @@ class Model:
     def has_moved_this_turn(self):
         return self.has_moved
 
-    def move_to(self, position):
+    def move_to(self, position, advance_move):
         log(f'\t\t\tModel [{self.name}] set at position {int(self.position.x), int(self.position.y)}')
         self.position = position
         self.has_moved = True
+        if advance_move:
+            self.has_advanced = True
 
     def move_towards_target(self, board_map, target_enemy, advance_move):
         # Get target position and current position
@@ -230,17 +233,18 @@ class Model:
                 # Move to the new position directly
                 board_map.map_configuration.clear_model(self.position)
                 board_map.map_configuration.set_model(new_position, self)
-                self.move_to(new_position)
+                self.move_to(new_position, advance_move)
             else:
                 # Find the nearest valid free position
                 nearest_free_position = find_nearest_free_position(board_map, target_enemy, new_position)
                 if nearest_free_position:
                     board_map.map_configuration.clear_model(self.position)
                     board_map.map_configuration.set_model(nearest_free_position, self)
-                    self.move_to(nearest_free_position)
+                    self.move_to(nearest_free_position, advance_move)
                 else:
                     # Stay in the current position if no valid position is found
-                    log(f"[MOVEMENT] Model {self.name} cannot move towards target at {target_position} from {self.position}.")
+                    log(f"[MOVEMENT] Model {self.name} cannot move towards target at {target_position} from "
+                        f"{self.position}.")
 
     def receive_damage(self, wounds):
         if wounds:
@@ -317,4 +321,5 @@ class Model:
                 return ModelPriority.UNIT_BOSS.value
 
     def start_new_turn(self):
+        self.has_advanced = False
         self.has_moved = False

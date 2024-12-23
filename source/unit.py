@@ -8,7 +8,6 @@ BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 
 
-
 class Unit:
     def __init__(self, name, models):
         self.raw_name = name
@@ -207,6 +206,8 @@ class Unit:
             for model in self.get_models_alive():
                 model.move_towards_target(board_map, self.targeted_enemy_unit, advance_move)
 
+            # Unit has advanced
+            self.has_advanced = True
             self.has_moved = True
             self.calculate_unit_centroid()
 

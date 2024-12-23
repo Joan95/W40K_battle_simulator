@@ -233,11 +233,12 @@ class Player:
         """Set the player's faction."""
         self.faction = f"{BOLD_ON}{self.factions_color}{faction_cfg}{Fore.RESET}{BOLD_OFF}"
 
-    def set_next_unit_for_shooting(self):
+    def get_next_unit_for_shooting_or_charging(self):
         self.selected_unit = None
-        if self.units_selection_list[self.unit_idx]:
+        if self.units_selection_list and self.units_selection_list[self.unit_idx]:
             self.selected_unit = self.units_selection_list[self.unit_idx]
             self.unit_idx += 1
+        return self.selected_unit
 
     def set_rol(self, rol):
         """Set the player's role (attacker or defender)."""

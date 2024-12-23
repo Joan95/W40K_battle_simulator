@@ -35,14 +35,14 @@ class GameHandler:
             feedback = self.execute_main_phases(phase_name, phase, count)
 
     def execute_main_phases(self, phase_name, phase_dict, phase_number, upper_phase=None):
-        current_phase = phase_dict['main_function']
+        current_phase_function = phase_dict['main_function']
         phase_name = f'#{phase_number} {phase_name.replace("_", " ").title().upper()}'
         if upper_phase:
             phase_name = upper_phase + ' - ' + phase_name
         log(f"[REPORT][TURN #{self.game_turn}] ----- ----- ----- [{self.active_player.name}] "
             f"{phase_name} ----- ----- -----", True)
 
-        feedback = current_phase()
+        feedback = current_phase_function()
 
         if 'sub_functions' in phase_dict:
             sub_phase_dict = phase_dict['sub_functions']
@@ -269,7 +269,6 @@ class GameHandler:
         return True
 
     def move_units(self):
-        # TODO: Check whether it's worth advancing or we might want to shoot instead
         for unit in self.active_player.get_units_alive():
             log(f"\t[REPORT][{self.active_player.name}] Moving unit [{unit.name}]")
             unit.move_towards_target(self.active_player.dices, self.boardgame)
@@ -293,17 +292,21 @@ class GameHandler:
         return True
 
     def select_eligible_unit(self):
-        self.active_player.set_next_unit_for_shooting()
-        log(f'[REPORT] [{self.active_player.name}] selects unit: [{self.active_player.get_selected_unit().name}]')
+        selected_unit = self.active_player.get_next_unit_for_shooting_or_charging()
+        if selected_unit:
+            log(f'[REPORT][{self.active_player.name}] selects unit: [{selected_unit.name}]')
+        else:
+            log(f'[REPORT][{self.active_player.name}] no more units eligible to proceed')
         return True
 
     def select_targets(self):
-        # Choose targets for that unit
-        enemy_units = self.inactive_player.get_units_alive()
-        self.active_player.set_target_for_selected_unit(enemy_units)
-        if not self.active_player.get_selected_unit().has_shoot:
-            log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target near. '
-                f'It won\'t shoot this turn')
+        if self.active_player.get_selected_unit():
+            # Choose targets for that unit
+            enemy_units = self.inactive_player.get_units_alive()
+            self.active_player.set_target_for_selected_unit(enemy_units)
+            if not self.active_player.get_selected_unit().has_shoot:
+                log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target near. '
+                    f'It won\'t shoot this turn')
         return True
 
     def make_ranged_attacks(self):
