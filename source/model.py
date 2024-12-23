@@ -1,10 +1,52 @@
+import battlefield
 from enums import AttackStyle, ModelPriority, WeaponType
 from logging_handler import *
+from shapely.geometry import Point
 
 MAX_THROW_D6 = 6
 # Constants for bold text
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
+
+
+def is_model_within_engagement_range(target_enemy, position):
+    # Define an engagement range (e.g., 1 unit)
+    engagement_range = 1
+    for enemy_model in target_enemy.models:
+        if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
+            return True
+    return False
+
+
+def find_nearest_free_position(board_map, target_enemy, position):
+    # Breadth-first search to find the nearest free position
+    from collections import deque
+    visited = set()
+    queue = deque([position])
+    while queue:
+        current_position = queue.popleft()
+        if not is_position_occupied(board_map, current_position) and \
+                not is_model_within_engagement_range(target_enemy, current_position):
+            return current_position
+        visited.add(current_position)
+        adjacent_points = battlefield.get_adjacent_points(current_position)
+        for point in adjacent_points:
+            if point not in visited and 0 <= point.x < board_map.map_configuration.wide and \
+                    0 <= point.y < board_map.map_configuration.large:
+                queue.append(point)
+    return None
+
+
+def is_position_occupied(board_map, position):
+    return not board_map.is_cell_empty(position)
+
+
+def update_model_position(board_map, model, new_position):
+    """Update the model's position on the board."""
+    if model.position:
+        board_map.map_configuration.clear_model(model.position)
+    board_map.map_configuration.set_model(new_position, model)
+    model.move_to(new_position)
 
 
 class ModelKeywords:
@@ -149,12 +191,35 @@ class Model:
     def has_moved_this_turn(self):
         return self.has_moved
 
-
     def move_to(self, position):
         self.position = position
         self.has_moved = True
-    def move_towards_target(self):
-        pass
+
+    def move_towards_target(self, board_map, target_enemy):
+        target_position = target_enemy.get_unit_centroid()
+        if self.position:
+            direction_x = target_position.x - self.position.x
+            direction_y = target_position.y - self.position.y
+            total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
+            if total_distance > 0:
+                step = min(int(self.movement.replace('"', '')), int(total_distance))
+                movement_x = step * (direction_x / total_distance)
+                movement_y = step * (direction_y / total_distance)
+            else:
+                movement_x = 0
+                movement_y = 0
+
+            new_position = Point(self.position.x + movement_x, self.position.y + movement_y)
+            new_position = board_map.clamp_position_within_boundaries(new_position)
+
+            if not is_model_within_engagement_range(target_enemy, new_position) and not \
+                    is_position_occupied(board_map, new_position):
+                update_model_position(board_map, self, new_position)
+            else:
+                # Find the nearest free position if the current one is occupied or within engagement range
+                nearest_free_position = find_nearest_free_position(board_map, target_enemy, new_position)
+                if nearest_free_position:
+                    update_model_position(board_map, self, nearest_free_position)
 
     def receive_damage(self, wounds):
         if wounds:

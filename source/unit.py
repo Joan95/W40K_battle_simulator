@@ -9,17 +9,6 @@ BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 
 
-def update_model_position(board_map, model, new_position):
-    """Update the model's position on the board."""
-    if model.position:
-        board_map.map_configuration.clear_model(model.position)
-    board_map.map_configuration.set_model(new_position, model)
-    model.move_to(new_position)
-
-
-def is_position_occupied(board_map, position):
-    return not board_map.is_cell_empty(position)
-
 
 class Unit:
     def __init__(self, name, models):
@@ -111,23 +100,6 @@ class Unit:
     def do_moral_check(self, value):
         pass
 
-    def find_nearest_free_position(self, board_map, position):
-        # Breadth-first search to find the nearest free position
-        from collections import deque
-        visited = set()
-        queue = deque([position])
-        while queue:
-            current_position = queue.popleft()
-            if not is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
-                    current_position):
-                return current_position
-            visited.add(current_position)
-            adjacent_points = get_adjacent_points(current_position)
-            for point in adjacent_points:
-                if point not in visited and 0 <= point.x < board_map.map_configuration.wide and 0 <= point.y < board_map.map_configuration.large:
-                    queue.append(point)
-        return None
-
     def form_unit_polygon(self):
         # Creates unit's polygon from models' positions
         model_coordinates = [
@@ -168,7 +140,6 @@ class Unit:
             self.is_alive = False
         return models_left
 
-
     def get_models_ranged_attacks(self):
         shooting_dict = dict()
         for model in self.get_models_alive():
@@ -206,9 +177,6 @@ class Unit:
             models_available_for_shooting.append(model)
         return models_available_for_shooting
 
-    def get_unit_movement(self):
-        return int(self.models[0].movement.replace('"', ''))
-
     def get_unit_threat_level(self):
         return self.unit_threat_level
 
@@ -225,42 +193,10 @@ class Unit:
     def is_unit_engaged(self):
         return self.is_engaged
 
-    def is_within_engagement_range(self, position):
-        # Define an engagement range (e.g., 1 unit)
-        engagement_range = 1
-        for enemy_model in self.targeted_enemy_unit.models:
-            if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
-                return True
-        return False
-
     def move_towards_target(self, board_map):
         if self.targeted_enemy_unit.is_alive:
-            target_position = self.targeted_enemy_unit.get_unit_centroid()
-
             for model in self.get_models_alive():
-                if model.position:
-                    direction_x = target_position.x - model.position.x
-                    direction_y = target_position.y - model.position.y
-                    total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
-                    if total_distance > 0:
-                        step = min(self.get_unit_movement(), int(total_distance))
-                        movement_x = step * (direction_x / total_distance)
-                        movement_y = step * (direction_y / total_distance)
-                    else:
-                        movement_x = 0
-                        movement_y = 0
-
-                    new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
-                    new_position = board_map.clamp_position_within_boundaries(new_position)
-
-                    if not self.is_within_engagement_range(new_position) and not \
-                            is_position_occupied(board_map, new_position):
-                        update_model_position(board_map, model, new_position)
-                    else:
-                        # Find the nearest free position if the current one is occupied or within engagement range
-                        nearest_free_position = self.find_nearest_free_position(board_map, new_position)
-                        if nearest_free_position:
-                            update_model_position(board_map, model, nearest_free_position)
+                model.move_towards_target(board_map, self.targeted_enemy_unit)
 
             self.has_moved = True
             self.calculate_unit_centroid()
