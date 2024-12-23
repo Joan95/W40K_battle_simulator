@@ -198,12 +198,6 @@ class Player:
         log(f"\t[PLAYER {self.name}] will play with {self.faction} '{self.detachment}'")
         log(f"\t[PLAYER {self.name}] Units used: [{', '.join(unit.name for unit in self.army.units)}]")
 
-    def move_units(self):
-        """Move units towards their targets."""
-        for unit in self.get_units_alive():
-            log(f"\t[PLAYER {self.name}] Moving unit [{unit.name}]")
-            unit.move_towards_target(self.battlefield)
-
     def new_turn(self):
         # Update danger score
         self.army.calculate_danger_score()
