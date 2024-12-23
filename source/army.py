@@ -33,6 +33,7 @@ class Army:
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
 
     def get_units_available_for_charging(self):
+        # MELEE units are considered available for charging
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged() and not unit.has_unit_advanced()]
 
     def get_units_available_for_moving(self):

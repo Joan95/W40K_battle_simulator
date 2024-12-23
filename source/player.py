@@ -70,7 +70,10 @@ class Player:
 
     def allocate_damage(self, model, damage):
         log(f'\t[PLAYER {self.name}] is allocating {damage} wound(s) to {model.name}')
-        return model.receive_damage(self.dices, damage)
+        if model.has_feel_no_pain():
+            damage = model.do_feel_no_pain(self.dices, damage)
+
+        return model.receive_damage(damage)
 
     def are_more_units_to_be_selected(self):
         if self.unit_idx < len(self.units_selection_list):

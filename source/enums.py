@@ -9,6 +9,14 @@ class AttackStrength(Enum):
     DOUBLE_STRONG = 6
 
 
+class AttackStyle(Enum):
+    ONLY_MELEE_ATTACK = 0
+    MELEE_ATTACK = 1
+    BALANCED_ATTACK = 2
+    RANGED_ATTACK = 3
+    ONLY_RANGED_ATTACK = 4
+
+
 class CommandPhase(Enum):
     """
     1 - COMMAND PHASE
@@ -94,18 +102,12 @@ class GamePhase(Enum):
     FIGHT_PHASE = 5
 
 
-class ModelPreferredStyle(Enum):
-    MELEE_ATTACK = 0
-    RANGED_ATTACK = 1
-    BALANCED_ATTACK = 2
-
-
 class ModelPriority(Enum):
     WARLORD = 5
     EPIC_HERO = 4
     CHARACTER = 3
     UNIT_BOSS = 2
-    INFANTRY = 1
+    UNIT_MODEL = 1
 
 
 class PlayerRol(Enum):

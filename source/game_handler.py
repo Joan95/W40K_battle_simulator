@@ -74,7 +74,6 @@ class GameHandler:
                 log(f"[REPORT] Player {self.active_player.raw_name} has not more units left. End of the game.")
                 break
 
-
             # Execute Defender phase
             self.active_player = defender
             self.inactive_player = attacker
@@ -271,12 +270,15 @@ class GameHandler:
 
     def move_units(self):
         # TODO: Check whether it's worth advancing or we might want to shoot instead
-        self.active_player.move_units()
+
+        for unit in self.active_player.get_units_alive():
+            log(f"\t[REPORT][{self.active_player.name}] Moving unit [{unit.name}]")
+            unit.move_towards_target(self.boardgame)
         self.boardgame.display_board()
         return True
 
     def reinforcements(self):
-        log(f'[REPORT] [{self.active_player.name}] has no more units to be placed. '
+        log(f'[REPORT][{self.active_player.name}] has no more units to be placed. '
             f'Not expecting further reinforcements')
         return True
 

@@ -1,5 +1,6 @@
 from battlefield import get_adjacent_points
 from colorama import Fore
+from enums import AttackStyle
 from logging_handler import log
 from shapely.geometry import LineString, Polygon, Point
 
@@ -24,20 +25,22 @@ class Unit:
     def __init__(self, name, models):
         self.raw_name = name
         self.name = name
-        self.models = models
-        self.is_warlord_in_the_unit = self.check_if_warlord_in_unit()
-        self.moral_check_passed = True
+
+        self.battle_shock_passed = True
         self.is_alive = True
         self.is_engaged = False
-        self.is_unit_visible = self.check_unit_visibility()
+        self.is_unit_visible = True
+        self.is_warlord_in_the_unit = False
         self.has_been_deployed = False
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
+        self.models = models
         self.targeted_enemy_unit = None
         self.unit_centroid = None
         self.unit_initial_force = len(self.models)
         self.unit_leadership = None
+        self.unit_preferred_attack_style = None
         self.unit_polygon = None
         self.unit_potential_melee_damage = None
         self.unit_potential_ranged_damage = None
@@ -46,6 +49,9 @@ class Unit:
         self.unit_survivability = None
         self.unit_threat_level = None
 
+        # Calculate its score
+        self.check_if_warlord_in_unit()
+        self.set_unit_preferred_attack_style()
         self.update_unit_total_score()
 
         if self.is_warlord_in_the_unit:
@@ -73,7 +79,7 @@ class Unit:
     def calculate_unit_objective_control(self):
         # Unit only has some objective control if it has passed the moral check, performed when unit current
         # members are lower than half of its initial force
-        if self.moral_check_passed:
+        if self.battle_shock_passed:
             self.unit_objective_control = sum(model.objective_control for model in self.get_models_alive())
         else:
             self.unit_objective_control = 0
@@ -100,11 +106,7 @@ class Unit:
             self.set_unit_target(closest_and_weakest_enemy)
 
     def check_if_warlord_in_unit(self):
-        return any(model.is_warlord for model in self.models)
-
-    def check_unit_visibility(self):
-        is_visible = True in [model.is_visible for model in self.models]
-        return is_visible
+        self.is_warlord_in_the_unit = any(model.is_warlord for model in self.models)
 
     def do_moral_check(self, value):
         pass
@@ -263,6 +265,56 @@ class Unit:
             self.has_moved = True
             self.calculate_unit_centroid()
 
+    def set_unit_preferred_attack_style(self):
+        """
+        Sets the unit's preferred attack style based on the distribution of model preferences.
+        Determines the style as MELEE, RANGED, or BALANCED based on percentage thresholds.
+        """
+        # Initialize counts for each attack style
+        preferred_attack_style_count = {
+            AttackStyle.ONLY_MELEE_ATTACK.name: 0,
+            AttackStyle.MELEE_ATTACK.name: 0,
+            AttackStyle.BALANCED_ATTACK.name: 0,
+            AttackStyle.RANGED_ATTACK.name: 0,
+            AttackStyle.ONLY_RANGED_ATTACK.name: 0,
+        }
+
+        # Count each model's preferred attack style
+        for model in self.models:
+            if model.model_preferred_attack_style in preferred_attack_style_count:
+                preferred_attack_style_count[model.model_preferred_attack_style] += 1
+
+        # Calculate percentages
+        total_models = len(self.models)
+        style_percentages = {
+            style: (count / total_models) * 100
+            for style, count in preferred_attack_style_count.items()
+        }
+
+        # Determine the unit's preferred attack style based on thresholds
+        only_melee_percent = style_percentages[AttackStyle.ONLY_MELEE_ATTACK.name]
+        melee_percent = style_percentages[AttackStyle.MELEE_ATTACK.name]
+        balanced_percent = style_percentages[AttackStyle.BALANCED_ATTACK.name]
+        ranged_percent = style_percentages[AttackStyle.RANGED_ATTACK.name]
+        only_ranged_percent = style_percentages[AttackStyle.ONLY_RANGED_ATTACK.name]
+
+        if only_melee_percent > 80:
+            self.unit_preferred_attack_style = AttackStyle.ONLY_MELEE_ATTACK.name
+        elif only_ranged_percent > 80:
+            self.unit_preferred_attack_style = AttackStyle.ONLY_RANGED_ATTACK.name
+        elif melee_percent > 60:
+            self.unit_preferred_attack_style = AttackStyle.MELEE_ATTACK.name
+        elif ranged_percent > 60:
+            self.unit_preferred_attack_style = AttackStyle.RANGED_ATTACK.name
+        else:
+            self.unit_preferred_attack_style = AttackStyle.BALANCED_ATTACK.name
+
+        # Log the result for debugging
+        log(f"[UNIT][{self.name}] Preferred Attack Style: {self.unit_preferred_attack_style} "
+            f"(Only Melee: {only_melee_percent:.2f}%, Melee: {melee_percent:.2f}%, "
+            f"Balanced: {balanced_percent:.2f}%, "
+            f"Ranged: {ranged_percent:.2f}%, Only Ranged: {only_ranged_percent:.2f}%)")
+
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
 
@@ -270,7 +322,7 @@ class Unit:
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
-        self.moral_check_passed = True
+        self.battle_shock_passed = True
         for model in self.models:
             model.start_new_turn()
 

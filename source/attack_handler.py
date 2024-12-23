@@ -151,7 +151,7 @@ class AttackHandler:
                     f'will success at {weapon_attack_strength}\'s')
             else:
                 log(f'[WOUND ROLL(s)][{self.attacking_weapon.name}] #{num_hits} hit(s) that will success at '
-                f'{weapon_attack_strength}\'s')
+                    f'{weapon_attack_strength}\'s')
 
             self.attacker.dices.roll_dices(number_of_dices='{}D6'.format(num_hits + number_of_extra_hits))
             wounds = self.attacker.dices.last_roll_dice_values

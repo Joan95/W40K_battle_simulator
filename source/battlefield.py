@@ -42,12 +42,16 @@ class BoardHandle:
                 if type(cell) == str:
                     row_to_print += f' {str(cell):2}'
                 elif type(cell) == Model:
-                    if 'EPIC HERO' in cell.keywords:
-                        row_to_print += f' {Fore.LIGHTMAGENTA_EX}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
-                    elif 'CHARACTER' in cell.keywords:
-                        row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
+                    model = cell
+                    if 'EPIC HERO' in model.keywords:
+                        row_to_print += f' {Fore.LIGHTMAGENTA_EX}{BOLD_ON}{model.name[:2]}{BOLD_OFF}'
+                    elif 'CHARACTER' in model.keywords:
+                        row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{model.name[:2]}{BOLD_OFF}'
                     else:
-                        row_to_print += f' {cell.name[:2]}'
+                        if model.is_wounded:
+                            row_to_print += f' {Fore.RED}{model.name[:2]}{Fore.RESET}'
+                        else:
+                            row_to_print += f' {model.name[:2]}'
             log(f"{row_to_print}|", True)
         log(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}", True)
 

@@ -1,4 +1,4 @@
-from enums import ModelPreferredStyle, ModelPriority, WeaponType
+from enums import AttackStyle, ModelPriority, WeaponType
 from logging_handler import *
 
 MAX_THROW_D6 = 6
@@ -56,6 +56,19 @@ class Model:
             chance_of_defence += (1 - base_chance_of_defence) * (MAX_THROW_D6 - (int(self.feel_no_pain) - 1)) / 6
         return chance_of_defence
 
+    def do_feel_no_pain(self, dices, wounds):
+        log(f'[MODEL][{self.name}] has feel no pain at {self.feel_no_pain}+')
+        dices.roll_dices('{}D6'.format(wounds))
+        saved_wounds = 0
+        for dice in dices.last_roll_dice_values:
+            if dice >= self.feel_no_pain:
+                saved_wounds += 1
+        if saved_wounds:
+            log(f'[MODEL][{self.name}] saved {saved_wounds}')
+        else:
+            log(f'[MODEL][{self.name}] has not saved anything, will receive entire attack')
+        return wounds - saved_wounds
+
     def get_description(self):
         return self.description
 
@@ -110,11 +123,11 @@ class Model:
         return self.priority_to_die
 
     def get_model_salvation(self):
-        log(f'\t\t[MODEL] {self.name} has salvation of {self.salvation}+ ')
+        log(f'\t\t[MODEL][{self.name}] has salvation of {self.salvation}+ ')
         return self.salvation
 
     def get_model_toughness(self):
-        log(f'\t\t[MODEL] {self.name} has toughness of {self.toughness}')
+        log(f'\t\t[MODEL][{self.name}] has toughness of {self.toughness}')
         return self.toughness
 
     def get_model_weapons_hit_probability_and_damage(self):
@@ -127,29 +140,33 @@ class Model:
     def get_model_weapons_ranged(self):
         return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
 
+    def has_feel_no_pain(self):
+        if self.feel_no_pain:
+            return True
+        else:
+            return False
+
     def has_moved_this_turn(self):
         return self.has_moved
+
 
     def move_to(self, position):
         self.position = position
         self.has_moved = True
+    def move_towards_target(self):
+        pass
 
-    def receive_damage(self, dices, wounds):
-        if self.feel_no_pain:
-            log(f'[MODEL] [{self.name}] has feel no pain at {self.feel_no_pain}+')
-            dices.roll_dices('{}D6'.format(wounds))
-            for dice in dices.last_roll_dice_values:
-                if dice >= self.feel_no_pain:
-                    wounds -= 1
-
-        self.wounds -= wounds
-        if self.wounds <= 0:
-            self.is_alive = False
-            log(f'[MODEL] [{self.name}] receives {wounds} wound(s) and dies honorably')
-            return True
-        else:
-            log(f'[MODEL] [{self.name}] receives {wounds} wound(s). Remaining wound(s) {self.wounds}')
-            return False
+    def receive_damage(self, wounds):
+        if wounds:
+            self.is_wounded = True
+            self.wounds -= wounds
+            if self.wounds <= 0:
+                self.is_alive = False
+                log(f'[MODEL][{self.name}] receives {wounds} wound(s) and dies honorably')
+                return True
+            else:
+                log(f'[MODEL][{self.name}] receives {wounds} wound(s). Remaining wound(s) {self.wounds}')
+        return False
 
     def set_description(self):
         lines = [
@@ -172,22 +189,30 @@ class Model:
         # First, calculate the hit probability and potential damage for all the weapons
         self.get_model_weapons_hit_probability_and_damage()
 
+        # Calculate scores for melee and ranged attacks
         self.model_melee_score = self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack
         self.model_ranged_score = \
             self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack
 
-        # Define a threshold for "balanced" (you can adjust this threshold based on your needs)
-        threshold = 0.75  # This can be adjusted to determine how close the scores need to be
+        # Define thresholds
+        dominance_threshold = 4  # Minimum difference for a style to dominate
+        balanced_threshold = 0.75  # Threshold for scores being close enough to be balanced
 
-        # If the melee and ranged scores are within the threshold, it's a balanced model
-        if abs(self.model_melee_score - self.model_ranged_score) <= threshold:
-            self.model_preferred_attack_style = ModelPreferredStyle.BALANCED_ATTACK
+        # Determine preferred attack style
+        if self.model_melee_score >= self.model_ranged_score + dominance_threshold:
+            self.model_preferred_attack_style = AttackStyle.ONLY_MELEE_ATTACK.name
+        elif self.model_ranged_score >= self.model_melee_score + dominance_threshold:
+            self.model_preferred_attack_style = AttackStyle.ONLY_RANGED_ATTACK.name
+        elif abs(self.model_melee_score - self.model_ranged_score) <= balanced_threshold:
+            self.model_preferred_attack_style = AttackStyle.BALANCED_ATTACK.name
         elif self.model_melee_score > self.model_ranged_score:
-            self.model_preferred_attack_style = ModelPreferredStyle.MELEE_ATTACK
+            self.model_preferred_attack_style = AttackStyle.MELEE_ATTACK.name
         else:
-            self.model_preferred_attack_style = ModelPreferredStyle.RANGED_ATTACK
+            self.model_preferred_attack_style = AttackStyle.RANGED_ATTACK.name
+
+        # Log the result for debugging
         log(f'[MODEL][{self.name}] has a melee_score of [{self.model_melee_score}] '
-            f'and ranged_score of [{self.model_ranged_score}] preferred attack style will be '
+            f'and ranged_score of [{self.model_ranged_score}]. Preferred attack style: '
             f'{self.model_preferred_attack_style}')
 
     def set_model_priority_to_die(self, more_than_one):
@@ -197,10 +222,10 @@ class Model:
             return ModelPriority.EPIC_HERO.value
         elif 'CHARACTER' in self.keywords:
             return ModelPriority.CHARACTER.value
-        elif 'INFANTRY' in self.keywords:
+        else:
             if more_than_one:
                 # This is unit basic model
-                return ModelPriority.INFANTRY.value
+                return ModelPriority.UNIT_MODEL.value
             else:
                 # This is boss unit basic model
                 return ModelPriority.UNIT_BOSS.value

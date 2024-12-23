@@ -137,7 +137,7 @@ class MeleeWeapon(Weapon):
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
         description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
                        f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
-        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name.upper() for ability in self.abilities])}]'
         return description
 
 
@@ -172,5 +172,5 @@ class RangedWeapon(Weapon):
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
         description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
                        f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
-        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name.upper() for ability in self.abilities])}]'
         return description
