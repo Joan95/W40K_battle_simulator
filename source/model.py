@@ -25,7 +25,7 @@ def find_nearest_free_position(board_map, target_enemy, position):
     queue = deque([position])
     while queue:
         current_position = queue.popleft()
-        if not is_position_occupied(board_map, current_position) and \
+        if board_map.is_cell_empty(current_position) and \
                 not is_model_within_engagement_range(target_enemy, current_position):
             return current_position
         visited.add(current_position)
@@ -35,10 +35,6 @@ def find_nearest_free_position(board_map, target_enemy, position):
                     0 <= point.y < board_map.map_configuration.large:
                 queue.append(point)
     return None
-
-
-def is_position_occupied(board_map, position):
-    return not board_map.is_cell_empty(position)
 
 
 def update_model_position(board_map, model, new_position):
@@ -212,8 +208,8 @@ class Model:
             new_position = Point(self.position.x + movement_x, self.position.y + movement_y)
             new_position = board_map.clamp_position_within_boundaries(new_position)
 
-            if not is_model_within_engagement_range(target_enemy, new_position) and not \
-                    is_position_occupied(board_map, new_position):
+            if not is_model_within_engagement_range(target_enemy, new_position) and \
+                    board_map.is_cell_empty(new_position):
                 update_model_position(board_map, self, new_position)
             else:
                 # Find the nearest free position if the current one is occupied or within engagement range

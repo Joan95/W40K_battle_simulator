@@ -1,4 +1,3 @@
-from battlefield import get_adjacent_points
 from colorama import Fore
 from enums import AttackStyle
 from logging_handler import log
@@ -195,6 +194,11 @@ class Unit:
 
     def move_towards_target(self, board_map):
         if self.targeted_enemy_unit.is_alive:
+            if self.unit_preferred_attack_style == AttackStyle.ONLY_MELEE_ATTACK.name:
+                # Unit is worth to lose shoot phase for advancing
+                if (get_distance(self, self.targeted_enemy_unit) > 12):
+                    pass
+
             for model in self.get_models_alive():
                 model.move_towards_target(board_map, self.targeted_enemy_unit)
 
