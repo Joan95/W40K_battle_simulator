@@ -192,15 +192,20 @@ class Unit:
     def is_unit_engaged(self):
         return self.is_engaged
 
-    def move_towards_target(self, board_map):
+    def move_towards_target(self, dices, board_map):
         if self.targeted_enemy_unit.is_alive:
+            advance_move = 0
             if self.unit_preferred_attack_style == AttackStyle.ONLY_MELEE_ATTACK.name:
                 # Unit is worth to lose shoot phase for advancing
-                if (get_distance(self, self.targeted_enemy_unit) > 12):
-                    pass
+                unit_movement = int(self.models[0].movement.replace('"', ''))
+                distance_to_target = get_distance(self, self.targeted_enemy_unit)
+                if distance_to_target > unit_movement + 6:
+                    log(f'\t[UNIT][{self.name}] Is {distance_to_target}" from its target. '
+                        f'It will be worth to force an advancing movement')
+                    advance_move = dices.roll_dices("1D6")
 
             for model in self.get_models_alive():
-                model.move_towards_target(board_map, self.targeted_enemy_unit)
+                model.move_towards_target(board_map, self.targeted_enemy_unit, advance_move)
 
             self.has_moved = True
             self.calculate_unit_centroid()

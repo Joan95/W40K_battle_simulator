@@ -270,10 +270,9 @@ class GameHandler:
 
     def move_units(self):
         # TODO: Check whether it's worth advancing or we might want to shoot instead
-
         for unit in self.active_player.get_units_alive():
             log(f"\t[REPORT][{self.active_player.name}] Moving unit [{unit.name}]")
-            unit.move_towards_target(self.boardgame)
+            unit.move_towards_target(self.active_player.dices, self.boardgame)
         self.boardgame.display_board()
         return True
 
