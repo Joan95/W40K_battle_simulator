@@ -268,13 +268,13 @@ class GameHandler:
         # Get enemy's alive units
         enemy_units = self.inactive_player.get_units_alive()
 
-        for unit in self.active_player.army.get_units_available_for_moving():
+        for unit in self.active_player.get_units_available_for_moving():
             # Force units to target enemies based on its score
             unit.chase_enemies(enemy_units)
         return True
 
     def move_units(self):
-        for unit in self.active_player.get_units_alive():
+        for unit in self.active_player.get_units_available_for_moving():
             log(f"\t[REPORT][{self.active_player.name}] Moving unit [{unit.name}]")
             unit.move_towards_target(self.active_player.dices, self.boardgame)
         self.boardgame.display_board()
@@ -331,16 +331,17 @@ class GameHandler:
     def make_ranged_attacks(self):
         selected_unit = self.active_player.get_selected_unit()
         # At least one model can shoot a target
-        if selected_unit.has_shoot:
-            attacks = selected_unit.get_models_ranged_attacks()
+        if selected_unit:
+            if selected_unit.has_shoot:
+                attacks = selected_unit.get_models_ranged_attacks()
 
-            for count, attack in enumerate(attacks, start=1):
-                log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
-                self.resolve_attack.set_new_attack(self.active_player, self.inactive_player, attacks[attack])
-                self.resolve_attack.do_attack()
-        else:
-            log(f'\t[PLAYER {self.active_player.name}] [{selected_unit.name}] will not shoot since '
-                f'it does not see anything')
+                for count, attack in enumerate(attacks, start=1):
+                    log(f'\t----- ----- ----- Resolving attack #{count} out of {len(attacks)} ----- ----- -----')
+                    self.resolve_attack.set_new_attack(self.active_player, self.inactive_player, attacks[attack])
+                    self.resolve_attack.do_attack()
+            else:
+                log(f'\t[PLAYER {self.active_player.name}] [{selected_unit.name}] will not shoot since '
+                    f'it does not see anything')
 
     def repeat_for_next_eligible_unit(self):
         # Check if there are more units to be selected
@@ -373,7 +374,9 @@ class GameHandler:
     def make_charge_move(self):
         attacking_unit = self.active_player.get_selected_unit()
         if attacking_unit and attacking_unit.charge_roll:
-            pass
+            # Force units to target enemies based on its score
+            attacking_unit.charge_target(self.boardgame)
+            self.boardgame.display_board()
         return True
 
     def fight_phase(self):

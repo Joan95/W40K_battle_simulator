@@ -9,13 +9,52 @@ BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 
 
+def is_model_within_model_space(target_enemy, position):
+    # Define the model range (e.g., 1 unit)
+    model_range = 1
+    for enemy_model in target_enemy.models:
+        if enemy_model.is_alive and position.distance(enemy_model.position) < model_range:
+            return True
+    return False
+
+
 def is_model_within_engagement_range(target_enemy, position):
     # Define an engagement range (e.g., 1 unit)
-    engagement_range = 1.5
+    engagement_range = 2
     for enemy_model in target_enemy.models:
         if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
             return True
     return False
+
+
+def find_nearest_charge_position(board_map, target_enemy, position):
+    from collections import deque
+
+    visited = set()  # Track visited cells
+    queue = deque([position])  # Initialize queue with the starting position
+
+    while queue:
+        current_position = queue.popleft()
+
+        # Check if the current position is valid
+        if board_map.is_cell_empty(current_position) and \
+                not is_model_within_model_space(target_enemy, current_position):
+            return current_position
+
+        visited.add(current_position)
+
+        # Get adjacent points and filter out invalid ones
+        adjacent_points = [
+            point for point in battlefield.get_adjacent_points(current_position)
+            if point not in visited and
+               0 <= point.x < board_map.map_configuration.wide and
+               0 <= point.y < board_map.map_configuration.large
+        ]
+
+        queue.extend(adjacent_points)
+
+    # If no free position is found, return None
+    return None
 
 
 def find_nearest_free_position(board_map, target_enemy, position):
@@ -79,6 +118,7 @@ class Model:
         self.has_advanced = False
         self.has_moved = False
         self.is_alive = True
+        self.is_engaged = False
         self.is_visible = True
         self.is_warlord = is_warlord
         self.is_wounded = False
@@ -104,6 +144,51 @@ class Model:
             # If there's a chance to ignore damage with "Feel No Pain"
             chance_of_defence += (1 - base_chance_of_defence) * (MAX_THROW_D6 - (int(self.feel_no_pain) - 1)) / 6
         return chance_of_defence
+
+    def charge_target(self, board_map, target_enemy, charge_movement):
+        # Get target position and current position
+        target_position = target_enemy.get_unit_centroid()
+        if self.position:
+            # Calculate direction vector
+            direction_x = target_position.x - self.position.x
+            direction_y = target_position.y - self.position.y
+            total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
+
+            if total_distance > 0:
+                step = min(charge_movement, int(total_distance))
+                movement_x = step * (direction_x / total_distance)
+                movement_y = step * (direction_y / total_distance)
+            else:
+                movement_x = movement_y = 0
+
+            # Calculate new position
+            new_position = Point(round(self.position.x + movement_x), round(self.position.y + movement_y))
+            new_position = board_map.clamp_position_within_boundaries(new_position)
+
+            # Check if the new position is valid
+            if not is_model_within_model_space(target_enemy, new_position) and \
+                    board_map.is_cell_empty(new_position):
+                # Move to the new position directly
+                board_map.map_configuration.clear_model(self.position)
+                board_map.map_configuration.set_model(new_position, self)
+                self.charge_to(new_position)
+            else:
+                # Find the nearest valid free position
+                nearest_free_position = find_nearest_charge_position(board_map, target_enemy, new_position)
+                if nearest_free_position:
+                    board_map.map_configuration.clear_model(self.position)
+                    board_map.map_configuration.set_model(nearest_free_position, self)
+                    self.charge_to(nearest_free_position)
+                else:
+                    # Stay in the current position if no valid position is found
+                    log(f"[MOVEMENT] Model {self.name} cannot move towards target at {target_position} from "
+                        f"{self.position}.")
+
+    def charge_to(self, position):
+        log(f'\t\t\t[Model][{self.name}] CHARGED {self.movement}. '
+            f'It has been set at position {int(self.position.x), int(self.position.y)}')
+        self.position = position
+        self.is_engaged = True
 
     def do_feel_no_pain(self, dices, wounds):
         log(f'[MODEL][{self.name}] has feel no pain at {self.feel_no_pain}+')
@@ -220,7 +305,7 @@ class Model:
     def has_moved_this_turn(self):
         return self.has_moved
 
-    def move_to(self, position, advance_move):
+    def move_to(self, position, advance_move=None):
         if advance_move:
             self.has_advanced = True
             log(f'\t\t\t[Model][{self.name}] ADVANCED {self.movement} + {advance_move}". '

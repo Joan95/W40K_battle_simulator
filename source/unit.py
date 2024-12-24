@@ -88,6 +88,12 @@ class Unit:
                                           / len(self.get_models_alive())
                                   ) * self.unit_potential_salvation
 
+    def charge_target(self, board_map):
+        for model in self.get_models_alive():
+            model.charge_target(board_map, self.targeted_enemy_unit, self.charge_roll)
+        self.is_engaged = True
+        self.targeted_enemy_unit.is_engaged = True
+
     def chase_enemies(self, enemy_units):
         if not enemy_units:
             return

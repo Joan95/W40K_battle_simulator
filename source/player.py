@@ -125,12 +125,15 @@ class Player:
     def get_unit_to_deploy(self):
         return self.army.get_unit_to_deploy()
 
-    def get_units_for_battle_shock(self):
-        return self.army.get_units_for_battle_shock()
-
     def get_units_alive(self):
         """Return a list of alive units."""
         return self.army.get_units_alive()
+
+    def get_units_available_for_moving(self):
+        return self.army.get_units_available_for_moving()
+
+    def get_units_for_battle_shock(self):
+        return self.army.get_units_for_battle_shock()
 
     def has_units_to_deploy(self):
         """Check if there are units left to deploy."""
