@@ -8,7 +8,7 @@ players_army_configuration = \
             'army': {
                 'units': [
                     {
-                        'unit_name': 'Mozrog Skragbad',
+                        'unit_name': 'Mozrog Skragbad + Beast Snaggas',
                         'models': [
                             {
                                 'name': 'Mozrog Skragbad',
@@ -17,7 +17,7 @@ players_army_configuration = \
                                     'MELEE': ["Big Chompa\'s jaws", 'Gutrippa']
                                 },
                                 'warlord': True
-                            }
+                            },
                         ]
                     },
                     {
@@ -145,7 +145,7 @@ players_army_configuration = \
             'army': {
                 'units': [
                     {
-                        'unit_name': 'Mozrog Skragbad',
+                        'unit_name': 'Mozrog Skragbad + Squighog Boyz',
                         'models': [
                             {
                                 'name': 'Mozrog Skragbad',
@@ -154,11 +154,27 @@ players_army_configuration = \
                                     'MELEE': ["Big Chompa\'s jaws", 'Gutrippa']
                                 },
                                 'warlord': True
-                            }
+                            },
+                            {
+                                'name': 'Squighog Boy',
+                                'amount': 3,
+                                'weapons': {
+                                    'RANGED': ['Saddlegit weapons'],
+                                    'MELEE': ['Squig jaws', 'Stikka']
+                                },
+                            },
+                            {
+                                'name': 'Nob on Smasha Squig',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Slugga'],
+                                    'MELEE': ['Big choppa', 'Squig jaws']
+                                },
+                            },
                         ]
                     },
                     {
-                        'unit_name': 'Big Mek + Boyz',
+                        'unit_name': 'Big Mek + Ranged Boyz',
                         'models': [
                             {
                                 'name': 'Big Mek with Shokk Attack Gun',
@@ -169,15 +185,7 @@ players_army_configuration = \
                             },
                             {
                                 'name': 'Boy',
-                                'amount': 4,
-                                'weapons': {
-                                    'RANGED': ['Slugga'],
-                                    'MELEE': ['Choppa']
-                                },
-                            },
-                            {
-                                'name': 'Boy',
-                                'amount': 4,
+                                'amount': 8,
                                 'weapons': {
                                     'RANGED': ['Shoota'],
                                     'MELEE': ['Close combat weapon']
@@ -195,8 +203,8 @@ players_army_configuration = \
                                 'name': 'Boss Nob',
                                 'amount': 1,
                                 'weapons': {
-                                    'RANGED': ['Slugga'],
-                                    'MELEE': ['Power klaw']
+                                    'RANGED': ['Kombi-weapon'],
+                                    'MELEE': ['Close combat weapon']
                                 },
                             },
                         ]
@@ -270,6 +278,27 @@ players_army_configuration = \
                                 'amount': 4,
                                 'weapons': {
                                     'RANGED': ['Combi-bolter'],
+                                    'MELEE': ['Accursed weapon']
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        'unit_name': 'Termis',
+                        'models': [
+                            {
+                                'name': 'Terminator Champion',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Combi-weapon'],
+                                    'MELEE': ['Accursed weapon']
+                                }
+                            },
+                            {
+                                'name': 'Chaos Terminator',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Combi-weapon'],
                                     'MELEE': ['Accursed weapon']
                                 }
                             }

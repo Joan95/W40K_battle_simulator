@@ -1,10 +1,97 @@
-from enums import ModelPreferredStyle, ModelPriority, WeaponType
+import battlefield
+from enums import AttackStyle, ModelPriority, WeaponType
 from logging_handler import *
+from shapely.geometry import Point
 
 MAX_THROW_D6 = 6
 # Constants for bold text
 BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
+
+
+def is_model_within_model_space(target_enemy, position):
+    # Define the model range (e.g., 1 unit)
+    model_range = 1
+    for enemy_model in target_enemy.models:
+        if enemy_model.is_alive and position.distance(enemy_model.position) < model_range:
+            return True
+    return False
+
+
+def is_model_within_engagement_range(target_enemy, position):
+    # Define an engagement range (e.g., 1 unit)
+    engagement_range = 2
+    for enemy_model in target_enemy.models:
+        if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
+            return True
+    return False
+
+
+def find_nearest_charge_position(board_map, target_enemy, position):
+    from collections import deque
+
+    visited = set()  # Track visited cells
+    queue = deque([position])  # Initialize queue with the starting position
+
+    while queue:
+        current_position = queue.popleft()
+
+        # Check if the current position is valid
+        if board_map.is_cell_empty(current_position) and \
+                not is_model_within_model_space(target_enemy, current_position):
+            return current_position
+
+        visited.add(current_position)
+
+        # Get adjacent points and filter out invalid ones
+        adjacent_points = [
+            point for point in battlefield.get_adjacent_points(current_position)
+            if point not in visited and
+               0 <= point.x < board_map.map_configuration.wide and
+               0 <= point.y < board_map.map_configuration.large
+        ]
+
+        queue.extend(adjacent_points)
+
+    # If no free position is found, return None
+    return None
+
+
+def find_nearest_free_position(board_map, target_enemy, position):
+    from collections import deque
+
+    visited = set()  # Track visited cells
+    queue = deque([position])  # Initialize queue with the starting position
+
+    while queue:
+        current_position = queue.popleft()
+
+        # Check if the current position is valid
+        if board_map.is_cell_empty(current_position) and \
+                not is_model_within_engagement_range(target_enemy, current_position):
+            return current_position
+
+        visited.add(current_position)
+
+        # Get adjacent points and filter out invalid ones
+        adjacent_points = [
+            point for point in battlefield.get_adjacent_points(current_position)
+            if point not in visited and
+               0 <= point.x < board_map.map_configuration.wide and
+               0 <= point.y < board_map.map_configuration.large
+        ]
+
+        queue.extend(adjacent_points)
+
+    # If no free position is found, return None
+    return None
+
+
+def update_model_position(board_map, model, new_position):
+    """Update the model's position on the board."""
+    if model.position:
+        board_map.map_configuration.clear_model(model.position)
+    board_map.map_configuration.set_model(new_position, model)
 
 
 class ModelKeywords:
@@ -28,10 +115,12 @@ class Model:
         self.weapons = list(weapons)
 
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
+        self.has_advanced = False
         self.has_moved = False
-        self.is_warlord = is_warlord
         self.is_alive = True
+        self.is_engaged = False
         self.is_visible = True
+        self.is_warlord = is_warlord
         self.is_wounded = False
         self.model_impact_probability_melee_attack = 0
         self.model_impact_probability_ranged_attack = 0
@@ -56,11 +145,91 @@ class Model:
             chance_of_defence += (1 - base_chance_of_defence) * (MAX_THROW_D6 - (int(self.feel_no_pain) - 1)) / 6
         return chance_of_defence
 
+    def charge_target(self, board_map, target_enemy, charge_movement):
+        # Get target position and current position
+        target_position = target_enemy.get_unit_centroid()
+        if self.position:
+            # Calculate direction vector
+            direction_x = target_position.x - self.position.x
+            direction_y = target_position.y - self.position.y
+            total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
+
+            if total_distance > 0:
+                step = min(charge_movement, int(total_distance))
+                movement_x = step * (direction_x / total_distance)
+                movement_y = step * (direction_y / total_distance)
+            else:
+                movement_x = movement_y = 0
+
+            # Calculate new position
+            new_position = Point(round(self.position.x + movement_x), round(self.position.y + movement_y))
+            new_position = board_map.clamp_position_within_boundaries(new_position)
+
+            # Check if the new position is valid
+            if not is_model_within_model_space(target_enemy, new_position) and \
+                    board_map.is_cell_empty(new_position):
+                # Move to the new position directly
+                board_map.map_configuration.clear_model(self.position)
+                board_map.map_configuration.set_model(new_position, self)
+                self.charge_to(new_position)
+            else:
+                # Find the nearest valid free position
+                nearest_free_position = find_nearest_charge_position(board_map, target_enemy, new_position)
+                if nearest_free_position:
+                    board_map.map_configuration.clear_model(self.position)
+                    board_map.map_configuration.set_model(nearest_free_position, self)
+                    self.charge_to(nearest_free_position)
+                else:
+                    # Stay in the current position if no valid position is found
+                    log(f"[MOVEMENT] Model {self.name} cannot move towards target at {target_position} from "
+                        f"{self.position}.")
+
+    def charge_to(self, position):
+        log(f'\t\t\t[Model][{self.name}] CHARGED {self.movement}. '
+            f'It has been set at position {int(self.position.x), int(self.position.y)}')
+        self.position = position
+        self.is_engaged = True
+
+    def do_feel_no_pain(self, dices, wounds):
+        log(f'[MODEL][{self.name}] has feel no pain at {self.feel_no_pain}+')
+        dices.roll_dices('{}D6'.format(wounds))
+        saved_wounds = 0
+        for dice in dices.last_roll_dice_values:
+            if dice >= self.feel_no_pain:
+                saved_wounds += 1
+        if saved_wounds:
+            log(f'[MODEL][{self.name}] saved {saved_wounds}')
+        else:
+            log(f'[MODEL][{self.name}] has not saved anything, will receive entire attack')
+        return wounds - saved_wounds
+
+    def get_available_ranged_weapons(self):
+        weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
+        assault_weapons = []
+        # If model has advanced this turn, it will be only able to shoot 'Assault' weapons
+        if self.has_advanced:
+            for weapon in weapons:
+                for ability in weapon.abilities:
+                    if 'Assault' in ability.name:
+                        assault_weapons.append(weapon)
+            weapons = assault_weapons
+        return weapons
+
     def get_description(self):
         return self.description
 
+    def get_distance_to_model(self, target_model):
+        pos1 = self.position
+        pos2 = target_model.position
+        if pos1 and pos2:
+            return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
+        return float('inf')
+
     def get_invulnerable_save(self):
         return self.invulnerable_save
+
+    def get_leadership(self):
+        return self.leadership
 
     def get_model_melee_weapons_hit_probability_and_damage(self):
         melee_weapons = self.get_model_weapons_melee()
@@ -110,11 +279,11 @@ class Model:
         return self.priority_to_die
 
     def get_model_salvation(self):
-        log(f'\t\t[MODEL] {self.name} has salvation of {self.salvation}+ ')
+        log(f'\t\t[MODEL][{self.name}] has salvation of {self.salvation}+ ')
         return self.salvation
 
     def get_model_toughness(self):
-        log(f'\t\t[MODEL] {self.name} has toughness of {self.toughness}')
+        log(f'\t\t[MODEL][{self.name}] has toughness of {self.toughness}')
         return self.toughness
 
     def get_model_weapons_hit_probability_and_damage(self):
@@ -127,29 +296,78 @@ class Model:
     def get_model_weapons_ranged(self):
         return [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
 
+    def has_feel_no_pain(self):
+        if self.feel_no_pain:
+            return True
+        else:
+            return False
+
     def has_moved_this_turn(self):
         return self.has_moved
 
-    def move_to(self, position):
+    def move_to(self, position, advance_move=None):
+        if advance_move:
+            self.has_advanced = True
+            log(f'\t\t\t[Model][{self.name}] ADVANCED {self.movement} + {advance_move}". '
+                f'It has been set at position {int(self.position.x), int(self.position.y)}')
+        else:
+            log(f'\t\t\t[Model][{self.name}] MOVED {self.movement}. '
+                f'It has been set at position {int(self.position.x), int(self.position.y)}')
         self.position = position
         self.has_moved = True
 
-    def receive_damage(self, dices, wounds):
-        if self.feel_no_pain:
-            log(f'[MODEL] [{self.name}] has feel no pain at {self.feel_no_pain}+')
-            dices.roll_dices('{}D6'.format(wounds))
-            for dice in dices.last_roll_dice_values:
-                if dice >= self.feel_no_pain:
-                    wounds -= 1
+    def move_towards_target(self, board_map, target_enemy, advance_move):
+        # Get target position and current position
+        target_position = target_enemy.get_unit_centroid()
+        if self.position:
+            # Calculate direction vector
+            direction_x = target_position.x - self.position.x
+            direction_y = target_position.y - self.position.y
+            total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
 
-        self.wounds -= wounds
-        if self.wounds <= 0:
-            self.is_alive = False
-            log(f'[MODEL] [{self.name}] receives {wounds} wound(s) and dies honorably')
-            return True
-        else:
-            log(f'[MODEL] [{self.name}] receives {wounds} wound(s). Remaining wound(s) {self.wounds}')
-            return False
+            # Calculate movement range (account for advance move if applicable)
+            movement_range = int(self.movement.replace('"', '')) + (advance_move if advance_move else 0)
+            if total_distance > 0:
+                step = min(movement_range, int(total_distance))
+                movement_x = step * (direction_x / total_distance)
+                movement_y = step * (direction_y / total_distance)
+            else:
+                movement_x = movement_y = 0
+
+            # Calculate new position
+            new_position = Point(round(self.position.x + movement_x), round(self.position.y + movement_y))
+            new_position = board_map.clamp_position_within_boundaries(new_position)
+
+            # Check if the new position is valid
+            if not is_model_within_engagement_range(target_enemy, new_position) and \
+                    board_map.is_cell_empty(new_position):
+                # Move to the new position directly
+                board_map.map_configuration.clear_model(self.position)
+                board_map.map_configuration.set_model(new_position, self)
+                self.move_to(new_position, advance_move)
+            else:
+                # Find the nearest valid free position
+                nearest_free_position = find_nearest_free_position(board_map, target_enemy, new_position)
+                if nearest_free_position:
+                    board_map.map_configuration.clear_model(self.position)
+                    board_map.map_configuration.set_model(nearest_free_position, self)
+                    self.move_to(nearest_free_position, advance_move)
+                else:
+                    # Stay in the current position if no valid position is found
+                    log(f"[MOVEMENT] Model {self.name} cannot move towards target at {target_position} from "
+                        f"{self.position}.")
+
+    def receive_damage(self, wounds):
+        if wounds:
+            self.is_wounded = True
+            self.wounds -= wounds
+            if self.wounds <= 0:
+                self.is_alive = False
+                log(f'[MODEL][{self.name}] receives {wounds} wound(s) and dies honorably')
+                return True
+            else:
+                log(f'[MODEL][{self.name}] receives {wounds} wound(s). Remaining wound(s) {self.wounds}')
+        return False
 
     def set_description(self):
         lines = [
@@ -172,22 +390,30 @@ class Model:
         # First, calculate the hit probability and potential damage for all the weapons
         self.get_model_weapons_hit_probability_and_damage()
 
+        # Calculate scores for melee and ranged attacks
         self.model_melee_score = self.model_impact_probability_melee_attack * self.model_potential_damage_melee_attack
         self.model_ranged_score = \
             self.model_impact_probability_ranged_attack * self.model_potential_damage_ranged_attack
 
-        # Define a threshold for "balanced" (you can adjust this threshold based on your needs)
-        threshold = 0.2  # This can be adjusted to determine how close the scores need to be
+        # Define thresholds
+        dominance_threshold = 4  # Minimum difference for a style to dominate
+        balanced_threshold = 0.75  # Threshold for scores being close enough to be balanced
 
-        # If the melee and ranged scores are within the threshold, it's a balanced model
-        if abs(self.model_melee_score - self.model_ranged_score) <= threshold:
-            self.model_preferred_attack_style = ModelPreferredStyle.BALANCED_ATTACK
+        # Determine preferred attack style
+        if self.model_melee_score >= self.model_ranged_score + dominance_threshold:
+            self.model_preferred_attack_style = AttackStyle.ONLY_MELEE_ATTACK.name
+        elif self.model_ranged_score >= self.model_melee_score + dominance_threshold:
+            self.model_preferred_attack_style = AttackStyle.ONLY_RANGED_ATTACK.name
+        elif abs(self.model_melee_score - self.model_ranged_score) <= balanced_threshold:
+            self.model_preferred_attack_style = AttackStyle.BALANCED_ATTACK.name
         elif self.model_melee_score > self.model_ranged_score:
-            self.model_preferred_attack_style = ModelPreferredStyle.MELEE_ATTACK
+            self.model_preferred_attack_style = AttackStyle.MELEE_ATTACK.name
         else:
-            self.model_preferred_attack_style = ModelPreferredStyle.RANGED_ATTACK
+            self.model_preferred_attack_style = AttackStyle.RANGED_ATTACK.name
+
+        # Log the result for debugging
         log(f'[MODEL][{self.name}] has a melee_score of [{self.model_melee_score}] '
-            f'and ranged_score of [{self.model_ranged_score}] preferred attack style will be '
+            f'and ranged_score of [{self.model_ranged_score}]. Preferred attack style: '
             f'{self.model_preferred_attack_style}')
 
     def set_model_priority_to_die(self, more_than_one):
@@ -197,13 +423,50 @@ class Model:
             return ModelPriority.EPIC_HERO.value
         elif 'CHARACTER' in self.keywords:
             return ModelPriority.CHARACTER.value
-        elif 'INFANTRY' in self.keywords:
+        else:
             if more_than_one:
                 # This is unit basic model
-                return ModelPriority.INFANTRY.value
+                return ModelPriority.UNIT_MODEL.value
             else:
                 # This is boss unit basic model
                 return ModelPriority.UNIT_BOSS.value
 
+    def set_ranged_target_for_model(self, enemy_units_list):
+        at_least_one_shot_is_available = False
+
+        target_candidates = list()
+        # Find the most appropriate enemy unit to target based on proximity and weakness
+        for enemy_unit in enemy_units_list:
+            target_candidates.extend([
+                (enemy_unit, enemy_model, self.get_distance_to_model(enemy_model), enemy_unit.unit_threat_level)
+                for enemy_model in enemy_unit.get_models_alive()
+            ])
+
+        if target_candidates:
+            # Prioritize targets based on calculated priority
+            target_candidates.sort(key=lambda x: (x[2], x[3]))
+
+        weapons_list = self.get_available_ranged_weapons()
+
+        # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
+        for weapon in weapons_list:
+            weapon.target_unit = None
+            weapon.target_distance = None
+            for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
+                if weapon.get_weapon_range_attack() >= distance_to_enemy:
+                    at_least_one_shot_is_available = True
+                    weapon.target_unit = enemy_unit
+                    weapon.target_distance = distance_to_enemy
+                    # The main enemy unit is reachable!
+                    log((f'\t[{self.name}] {int(self.position.x), int(self.position.y)} '
+                         f'will shoot [{weapon.name}] [{weapon.range_attack}]. '
+                         f'Model seen [{enemy_model.name}] at '
+                         f'{int(enemy_model.position.x), int(enemy_model.position.y)} [{weapon.target_unit.name}]. '
+                         f'Distance to target {distance_to_enemy}"'))
+                    break
+        return at_least_one_shot_is_available
+
     def start_new_turn(self):
+        self.has_advanced = False
         self.has_moved = False
+

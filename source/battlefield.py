@@ -1,5 +1,6 @@
 import random
 from colorama import Fore
+
 from logging_handler import log
 from model import Model
 from shapely.geometry import Point, Polygon
@@ -33,6 +34,12 @@ class BoardHandle:
     def clear_model(self, coord):
         self.boardgame[int(coord.y)][int(coord.x)] = "  "
 
+    def deploy_model(self, coord, model):
+        self.boardgame[int(coord.y)][int(coord.x)] = model
+        model.position = coord
+        model.is_alive = True
+        log(f'\t\t\t[BATTLEFIELD][{model.name}] has been deployed at {int(model.position.x), int(model.position.y)}')
+
     def display_board_game(self):
         # Print configuration for seeing how the map looks like
         log(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}", True)
@@ -42,19 +49,27 @@ class BoardHandle:
                 if type(cell) == str:
                     row_to_print += f' {str(cell):2}'
                 elif type(cell) == Model:
-                    if 'EPIC HERO' in cell.keywords:
-                        row_to_print += f' {Fore.LIGHTMAGENTA_EX}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
-                    elif 'CHARACTER' in cell.keywords:
-                        row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{cell.name[:2]}{BOLD_OFF}'
+                    model = cell
+                    if 'EPIC HERO' in model.keywords:
+                        row_to_print += f' {Fore.LIGHTMAGENTA_EX}{BOLD_ON}{model.name[:2]}{BOLD_OFF}'
+                    elif 'CHARACTER' in model.keywords:
+                        row_to_print += f' {Fore.MAGENTA}{BOLD_ON}{model.name[:2]}{BOLD_OFF}'
                     else:
-                        row_to_print += f' {cell.name[:2]}'
+                        if model.is_wounded:
+                            row_to_print += f' {Fore.RED}{model.name[:2]}{Fore.RESET}'
+                        else:
+                            row_to_print += f' {model.name[:2]}'
             log(f"{row_to_print}|", True)
         log(f"\t\t{' '.join(['{:02}'.format(x) for x in range(self.large)])}", True)
 
     def is_cell_empty(self, coord):
         x, y = int(coord.x), int(coord.y)
         try:
-            return self.boardgame[y][x] in (' ', 'A', 'D')
+            cell = self.boardgame[y][x]
+            if type(cell) != str:
+                return False
+            else:
+                return True
         except IndexError:
             pass
 
@@ -63,9 +78,6 @@ class BoardHandle:
 
     def set_model(self, coord, model):
         self.boardgame[int(coord.y)][int(coord.x)] = model
-        model.position = coord
-        model.is_alive = True
-        log(f'\t\t\tModel [{model.name}] set at position {int(model.position.x), int(model.position.y)}')
 
 
 def get_random_point_in_zone(zone):
@@ -112,7 +124,7 @@ class Battlefield:
             # Place first model in a valid and available point inside its zone
             first_model_point = get_random_point_in_zone(zone)
 
-        self.map_configuration.set_model(first_model_point, unit.models[0])
+        self.map_configuration.deploy_model(first_model_point, unit.models[0])
 
         # Now calculate adjacent points for the rest of the models in unit
         adjacent_points = get_adjacent_points(first_model_point)
@@ -121,7 +133,7 @@ class Battlefield:
             point = adjacent_points.pop(0)
             if 0 <= point.x < self.map_configuration.large and 0 <= point.y < self.map_configuration.wide:
                 if self.map_configuration.is_cell_empty(point) and (zone.contains(point) or zone.touches(point)):
-                    self.map_configuration.set_model(point, unit.models[model_index])
+                    self.map_configuration.deploy_model(point, unit.models[model_index])
                     model_index += 1
                     adjacent_points.extend(get_adjacent_points(point))
         # self.display_board()

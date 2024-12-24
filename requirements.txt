@@ -1,2 +1,2 @@
-colorama
-shapely
+colorama~=0.4.6
+shapely~=2.0.6

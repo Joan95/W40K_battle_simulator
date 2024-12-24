@@ -1,3 +1,4 @@
+from abilities_handler import WeaponAbility
 from enums import WeaponType
 from logging_handler import log
 
@@ -9,70 +10,6 @@ def set_abilities(abilities):
     for ability in abilities:
         abilities_list.append(WeaponAbility(ability[0]))
     return abilities_list
-
-
-class WeaponAbility:
-    def __init__(self, name):
-        self.name = name
-
-    def check_for_weapon_ability(self, model, enemy_target):
-        modifier = None
-        ability_name = self.name
-
-        # Define a dictionary where keys are abilities and values are their handler functions
-        ability_handlers = {
-            'Anti-infantry 4': lambda: self.handle_anti_infantry_ability(4),
-            'Anti-monster 4': lambda: self.handle_anti_monster_ability(4),
-            'Anti-vehicle 3': lambda: self.handle_anti_vehicle_ability(model, 3),
-            'Anti-vehicle 4': lambda: self.handle_anti_vehicle_ability(model, 4),
-            'Blast': lambda: self.handle_blast_ability(model, enemy_target),
-            'Devastating Wounds': lambda: self.handle_devastating_wounds_ability(),
-            'Extra Attacks': lambda: self.handle_extra_attacks_ability(),
-            'Heavy': lambda: self.handle_heavy_ability(model),
-            # Add more abilities here as needed
-        }
-
-        # Get the corresponding handler function for the ability
-        handler = ability_handlers.get(ability_name)
-
-        if handler:
-            # Execute the handler and get the modifier
-            modifier = handler()
-        else:
-            log(f'[WARNING] Unknown weapon ability: {self.name}')
-
-        return modifier
-
-    def handle_extra_attacks_ability(self):
-        pass
-
-    def handle_heavy_ability(self, model):
-        if not model.has_moved_this_turn():
-            log(f'[{model.name}] did not move this turn, applying HEAVY ability: +1 to impact roll.')
-            return 1  # Modifier for the impact roll
-        else:
-            log(f'[{model.name}] moved this turn, HEAVY ability cannot be applied.')
-            return 0  # No modifier
-
-    def handle_anti_infantry_ability(self, x):
-        pass
-
-    def handle_anti_monster_ability(self, x):
-        pass
-
-    def handle_anti_vehicle_ability(self, model, x):
-        log(f'[{model.name}] applies ANTI-VEHICLE ability: improved effectiveness against vehicles.')
-        # Implement anti-vehicle logic here
-        return None
-
-    def handle_blast_ability(self, model, enemy_target):
-        modifier = len(enemy_target.get_models_alive()) % 5
-        log(f'[{model.name}] [{self.name}] ability: additional attacks against large units. '
-            f'[{enemy_target.name}] has {len(enemy_target.get_models_alive())} models, attack modifier +{modifier}')
-        return modifier
-
-    def handle_devastating_wounds_ability(self):
-        pass
 
 
 class Weapon:
@@ -95,8 +32,8 @@ class Weapon:
         # Account for the number of attacks
         total_hit_probability = 1 - (1 - hit_probability_single_dice) ** self.get_weapon_max_num_attacks()
 
-        log(f'[WEAPON] [{self.name}] hit probability for one attack: {hit_probability_single_dice * 100:.2f}%')
-        log(f'[WEAPON] [{self.name}] hit probability for {self.num_attacks} attacks: '
+        log(f'[WEAPON][{self.name}] hit probability for one attack: {hit_probability_single_dice * 100:.2f}%')
+        log(f'[WEAPON][{self.name}] hit probability for {self.num_attacks} attacks: '
             f'{total_hit_probability * 100:.2f}%')
         return total_hit_probability
 
@@ -122,21 +59,21 @@ class Weapon:
             # If the damage is a fixed number (e.g., "4"), just use it directly
             average_damage = int(self.damage)
 
-        log(f'[WEAPON] [{self.name}] potential damage: {average_damage} per attack')
+        log(f'[WEAPON][{self.name}] potential damage: {average_damage} per attack')
         return average_damage
 
     def get_armour_penetration(self):
-        log(f'[WEAPON] {self.name} has Armour Penetration of {self.armour_penetration}')
+        log(f'[WEAPON][{self.name}] has Armour Penetration of {self.armour_penetration}')
         return self.armour_penetration
 
     def get_damage(self, dices):
         if isinstance(self.damage, str) and 'D' in self.damage:
-            log(f'[WEAPON] {self.name}\'s damage is {self.damage}. Throwing a dice for knowing the amount of damage')
+            log(f'[WEAPON][{self.name}]\'s damage is {self.damage}. Throwing a dice for knowing the amount of damage')
             dices.roll_dices('{}'.format(self.damage))
             damage = dices.last_roll_dice_value
         else:
             damage = int(self.damage)
-        log(f'[WEAPON] {self.name}\'s damage is {damage}')
+        log(f'[WEAPON][{self.name}]\'s damage is {damage}')
         return damage
 
     def get_num_attacks(self, dices):
@@ -144,11 +81,15 @@ class Weapon:
             num_attacks = dices.roll_dices(self.num_attacks)
         else:
             num_attacks = self.num_attacks
-        log(f'[WEAPON] A single {self.name} performs #{num_attacks} number of attack(s) at BS {self.ballistic_skill}')
+        log(f'[WEAPON][{self.name}] performs #{num_attacks} number of attack(s) with Ballistic Skill '
+            f'of {self.ballistic_skill}')
         return num_attacks, self.ballistic_skill
 
+    def get_raw_num_attacks(self):
+        return self.num_attacks
+
     def get_strength(self):
-        log(f'[WEAPON] {self.name}\'s strength is {self.strength}')
+        log(f'[WEAPON][{self.name}]\'s strength is {self.strength}')
         return self.strength
 
     def get_weapon_max_num_attacks(self):
@@ -187,16 +128,16 @@ class MeleeWeapon(Weapon):
     def get_strength(self):
         return super().get_strength()
 
-    def handle_weapon_abilities(self, model, enemy_target):
+    def handle_weapon_abilities(self, attack_step, model, enemy_target, critics):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(model, enemy_target)
+            ability.check_for_weapon_ability(self, attack_step, model, enemy_target, critics)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
         description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
                        f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
-        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name.upper() for ability in self.abilities])}]'
         return description
 
 
@@ -222,14 +163,14 @@ class RangedWeapon(Weapon):
     def get_strength(self):
         return super().get_strength()
 
-    def handle_weapon_abilities(self, model, enemy_target):
+    def handle_weapon_abilities(self, attack_step, model, enemy_target, critics):
         for ability in self.abilities:
-            ability.check_for_weapon_ability(model, enemy_target)
+            ability.check_for_weapon_ability(self, attack_step, model, enemy_target, critics)
 
     def set_description(self):
         description = f'\tWeapon name: [{self.name}]\n'
         description += f'\tTYPE\tRAN\tA\tBS\tS\tAP\tD\n'
         description += f'\t{self.type}\t{self.range_attack}\t{self.num_attacks}\t{self.ballistic_skill}\t' \
                        f'{self.strength}\t{self.armour_penetration}\t{self.damage}\n'
-        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name[0] for ability in self.abilities])}]'
+        description += f'\tWeapon abilities:\n\t\t[{", ".join([ability.name.upper() for ability in self.abilities])}]'
         return description

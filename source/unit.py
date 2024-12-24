@@ -1,5 +1,5 @@
-from battlefield import get_adjacent_points
 from colorama import Fore
+from enums import AttackStyle
 from logging_handler import log
 from shapely.geometry import LineString, Polygon, Point
 
@@ -8,36 +8,27 @@ BOLD_ON = "\033[1m"
 BOLD_OFF = "\033[0m"
 
 
-def update_model_position(board_map, model, new_position):
-    """Update the model's position on the board."""
-    if model.position:
-        board_map.map_configuration.clear_model(model.position)
-    board_map.map_configuration.set_model(new_position, model)
-    model.move_to(new_position)
-
-
-def is_position_occupied(board_map, position):
-    return not board_map.is_cell_empty(position)
-
-
 class Unit:
     def __init__(self, name, models):
         self.raw_name = name
         self.name = name
         self.models = models
-        self.is_warlord_in_the_unit = self.check_if_warlord_in_unit()
-        self.moral_check_passed = True
-        self.is_destroyed = False
+
+        self.charge_roll = None
+        self.initial_force = len(self.models)
+        self.is_alive = True
+        self.is_battle_shocked = False
         self.is_engaged = False
-        self.is_unit_visible = self.check_unit_visibility()
+        self.is_unit_visible = True
+        self.is_warlord_in_the_unit = False
         self.has_been_deployed = False
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
         self.targeted_enemy_unit = None
         self.unit_centroid = None
-        self.unit_initial_force = len(self.models)
         self.unit_leadership = None
+        self.unit_preferred_attack_style = None
         self.unit_polygon = None
         self.unit_potential_melee_damage = None
         self.unit_potential_ranged_damage = None
@@ -46,18 +37,35 @@ class Unit:
         self.unit_survivability = None
         self.unit_threat_level = None
 
+        # Calculate its score
+        self.check_if_warlord_in_unit()
+        self.set_unit_preferred_attack_style()
         self.update_unit_total_score()
 
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
 
+    def calculate_unit_centroid(self):
+        # Calculate the centroid of the unit's polygon or point
+        self.form_unit_polygon()
+        if self.unit_polygon and not self.unit_polygon.is_empty:
+            # Shapely geometries (Point, LineString, Polygon) have a .centroid property
+            self.unit_centroid = self.unit_polygon.centroid
+        else:
+            # No valid geometry, set centroid to None
+            self.unit_centroid = None
+
     def calculate_unit_potential_damages(self):
-        self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
-                                               model.model_impact_probability_melee_attack
-                                               for model in self.get_models_alive()) / len(self.get_models_alive())
-        self.unit_potential_ranged_damage = sum(model.model_potential_damage_ranged_attack *
-                                                model.model_impact_probability_ranged_attack
-                                                for model in self.get_models_alive()) / len(self.get_models_alive())
+        if self.get_models_alive():
+            self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
+                                                   model.model_impact_probability_melee_attack
+                                                   for model in self.get_models_alive()) / len(self.get_models_alive())
+            self.unit_potential_ranged_damage = sum(model.model_potential_damage_ranged_attack *
+                                                    model.model_impact_probability_ranged_attack
+                                                    for model in self.get_models_alive()) / len(self.get_models_alive())
+        else:
+            self.unit_potential_melee_damage = 0
+            self.unit_potential_ranged_damage = 0
 
     def calculate_unit_salvation_chance(self):
         self.unit_potential_salvation = sum(model.model_potential_salvation for model in self.get_models_alive()) \
@@ -69,7 +77,7 @@ class Unit:
     def calculate_unit_objective_control(self):
         # Unit only has some objective control if it has passed the moral check, performed when unit current
         # members are lower than half of its initial force
-        if self.moral_check_passed:
+        if not self.is_battle_shocked:
             self.unit_objective_control = sum(model.objective_control for model in self.get_models_alive())
         else:
             self.unit_objective_control = 0
@@ -79,6 +87,12 @@ class Unit:
                                           sum(model.wounds for model in self.get_models_alive())
                                           / len(self.get_models_alive())
                                   ) * self.unit_potential_salvation
+
+    def charge_target(self, board_map):
+        for model in self.get_models_alive():
+            model.charge_target(board_map, self.targeted_enemy_unit, self.charge_roll)
+        self.is_engaged = True
+        self.targeted_enemy_unit.is_engaged = True
 
     def chase_enemies(self, enemy_units):
         if not enemy_units:
@@ -96,31 +110,40 @@ class Unit:
             self.set_unit_target(closest_and_weakest_enemy)
 
     def check_if_warlord_in_unit(self):
-        return any(model.is_warlord for model in self.models)
+        self.is_warlord_in_the_unit = any(model.is_warlord for model in self.models)
 
-    def check_unit_visibility(self):
-        is_visible = True in [model.is_visible for model in self.models]
-        return is_visible
+    def do_charge_roll(self, dices):
+        dices.roll_dices('2D6')
+        charge_roll_value = 0
+        for dice in dices.last_roll_dice_values:
+            charge_roll_value += dice
+        distance_to_target = self.get_distance_to_target()
+        if charge_roll_value >= distance_to_target:
+            self.charge_roll = charge_roll_value
+            log(f'[UNIT][{self.name}] Charge roll of {charge_roll_value} is greater than target distance of '
+                f'{distance_to_target}. '
+                f'[{self.name}] will charge [{self.targeted_enemy_unit.name}]')
+        else:
+            self.charge_roll = None
+            log(f'[UNIT][{self.name}] Charge roll of {charge_roll_value} is less than target distance of '
+                f'{distance_to_target}. '
+                f'[{self.name}] will not charge')
 
-    def do_moral_check(self, value):
-        pass
+    def do_moral_check(self, dices):
+        dices.roll_dices('2D6')
+        moral_check_value = 0
+        for dice in dices.last_roll_dice_values:
+            moral_check_value += dice
 
-    def find_nearest_free_position(self, board_map, position):
-        # Breadth-first search to find the nearest free position
-        from collections import deque
-        visited = set()
-        queue = deque([position])
-        while queue:
-            current_position = queue.popleft()
-            if not is_position_occupied(board_map, current_position) and not self.is_within_engagement_range(
-                    current_position):
-                return current_position
-            visited.add(current_position)
-            adjacent_points = get_adjacent_points(current_position)
-            for point in adjacent_points:
-                if point not in visited and 0 <= point.x < board_map.map_configuration.wide and 0 <= point.y < board_map.map_configuration.large:
-                    queue.append(point)
-        return None
+        leadership = self.get_next_model_to_die().get_leadership()
+        if moral_check_value >= leadership:
+            log(f'[UNIT][{self.name}] {moral_check_value} is greater than needed leadership of {leadership}+ '
+                f'has successfully passed the moral check')
+            self.is_battle_shocked = False
+        else:
+            log(f'[UNIT][{self.name}] {moral_check_value} does not reach the needed leadership of {leadership}+. '
+                f'Unit has not passed the moral check, now it is battle-shocked')
+            self.is_battle_shocked = True
 
     def form_unit_polygon(self):
         # Creates unit's polygon from models' positions
@@ -147,13 +170,15 @@ class Unit:
             # No models alive
             self.unit_polygon = None
 
-    def get_next_model_to_die(self):
-        # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
-        alive_models = self.get_models_alive()
-        return min(alive_models, key=lambda model: model.priority_to_die)
+    def get_distance_to_target(self):
+        return get_distance(self, self.targeted_enemy_unit)
 
     def get_models_alive(self):
-        return [model for model in self.models if model.is_alive]
+        models_left = [model for model in self.models if model.is_alive]
+        if not models_left:
+            log(f'[UNIT][{self.name}] has been completely destroyed')
+            self.is_alive = False
+        return models_left
 
     def get_models_ranged_attacks(self):
         shooting_dict = dict()
@@ -173,15 +198,13 @@ class Unit:
                         shooting_dict[entry_name]['count'] += 1
         return shooting_dict
 
-    def calculate_unit_centroid(self):
-        # Calculate the centroid of the unit's polygon or point
-        self.form_unit_polygon()
-        if self.unit_polygon and not self.unit_polygon.is_empty:
-            # Shapely geometries (Point, LineString, Polygon) have a .centroid property
-            self.unit_centroid = self.unit_polygon.centroid
+    def get_next_model_to_die(self):
+        # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
+        alive_models = self.get_models_alive()
+        if alive_models:
+            return min(alive_models, key=lambda model: model.priority_to_die)
         else:
-            # No valid geometry, set centroid to None
-            self.unit_centroid = None
+            return None
 
     def get_unit_centroid(self):
         return self.unit_centroid
@@ -192,15 +215,12 @@ class Unit:
             models_available_for_shooting.append(model)
         return models_available_for_shooting
 
-    def get_unit_movement(self):
-        return int(self.models[0].movement.replace('"', ''))
-
     def get_unit_threat_level(self):
         return self.unit_threat_level
 
     def get_unit_toughness(self):
         log(f'\t\t[UNIT] Checking unit\'s toughness')
-        return self.models[0].get_model_toughness()
+        return self.get_next_model_to_die().get_model_toughness()
 
     def has_unit_advanced(self):
         return self.has_advanced
@@ -211,54 +231,85 @@ class Unit:
     def is_unit_engaged(self):
         return self.is_engaged
 
-    def is_within_engagement_range(self, position):
-        # Define an engagement range (e.g., 1 unit)
-        engagement_range = 1
-        for enemy_model in self.targeted_enemy_unit.models:
-            if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
-                return True
-        return False
-
-    def move_towards_target(self, board_map):
-        if not self.targeted_enemy_unit.is_destroyed:
-            target_position = self.targeted_enemy_unit.get_unit_centroid()
+    def move_towards_target(self, dices, board_map):
+        if self.targeted_enemy_unit.is_alive:
+            advance_move = 0
+            if self.unit_preferred_attack_style == AttackStyle.ONLY_MELEE_ATTACK.name:
+                # Unit is worth to lose shoot phase for advancing
+                unit_movement = int(self.models[0].movement.replace('"', ''))
+                distance_to_target = get_distance(self, self.targeted_enemy_unit)
+                if distance_to_target > unit_movement + 6:
+                    advance_move = dices.roll_dices("1D6")
+                    # Unit has advanced
+                    self.has_advanced = True
+                    log(f'\t[ADVANCING MOVEMENT][{self.name}] Is {distance_to_target}" from its target. '
+                        f'It will be worth to force an advancing movement. Additional movement of {advance_move}"')
 
             for model in self.get_models_alive():
-                if model.position:
-                    direction_x = target_position.x - model.position.x
-                    direction_y = target_position.y - model.position.y
-                    total_distance = Point(direction_x, direction_y).distance(Point(0, 0))
-                    if total_distance > 0:
-                        step = min(self.get_unit_movement(), int(total_distance))
-                        movement_x = step * (direction_x / total_distance)
-                        movement_y = step * (direction_y / total_distance)
-                    else:
-                        movement_x = 0
-                        movement_y = 0
-
-                    new_position = Point(model.position.x + movement_x, model.position.y + movement_y)
-                    new_position = board_map.clamp_position_within_boundaries(new_position)
-
-                    if not self.is_within_engagement_range(new_position) and not \
-                            is_position_occupied(board_map, new_position):
-                        update_model_position(board_map, model, new_position)
-                    else:
-                        # Find the nearest free position if the current one is occupied or within engagement range
-                        nearest_free_position = self.find_nearest_free_position(board_map, new_position)
-                        if nearest_free_position:
-                            update_model_position(board_map, model, nearest_free_position)
+                model.move_towards_target(board_map, self.targeted_enemy_unit, advance_move)
 
             self.has_moved = True
             self.calculate_unit_centroid()
+
+    def set_unit_preferred_attack_style(self):
+        """
+        Sets the unit's preferred attack style based on the distribution of model preferences.
+        Determines the style as MELEE, RANGED, or BALANCED based on percentage thresholds.
+        """
+        # Initialize counts for each attack style
+        preferred_attack_style_count = {
+            AttackStyle.ONLY_MELEE_ATTACK.name: 0,
+            AttackStyle.MELEE_ATTACK.name: 0,
+            AttackStyle.BALANCED_ATTACK.name: 0,
+            AttackStyle.RANGED_ATTACK.name: 0,
+            AttackStyle.ONLY_RANGED_ATTACK.name: 0,
+        }
+
+        # Count each model's preferred attack style
+        for model in self.models:
+            if model.model_preferred_attack_style in preferred_attack_style_count:
+                preferred_attack_style_count[model.model_preferred_attack_style] += 1
+
+        # Calculate percentages
+        total_models = len(self.models)
+        style_percentages = {
+            style: (count / total_models) * 100
+            for style, count in preferred_attack_style_count.items()
+        }
+
+        # Determine the unit's preferred attack style based on thresholds
+        only_melee_percent = style_percentages[AttackStyle.ONLY_MELEE_ATTACK.name]
+        melee_percent = style_percentages[AttackStyle.MELEE_ATTACK.name]
+        balanced_percent = style_percentages[AttackStyle.BALANCED_ATTACK.name]
+        ranged_percent = style_percentages[AttackStyle.RANGED_ATTACK.name]
+        only_ranged_percent = style_percentages[AttackStyle.ONLY_RANGED_ATTACK.name]
+
+        if only_melee_percent > 80:
+            self.unit_preferred_attack_style = AttackStyle.ONLY_MELEE_ATTACK.name
+        elif only_ranged_percent > 80:
+            self.unit_preferred_attack_style = AttackStyle.ONLY_RANGED_ATTACK.name
+        elif melee_percent > 60:
+            self.unit_preferred_attack_style = AttackStyle.MELEE_ATTACK.name
+        elif ranged_percent > 60:
+            self.unit_preferred_attack_style = AttackStyle.RANGED_ATTACK.name
+        else:
+            self.unit_preferred_attack_style = AttackStyle.BALANCED_ATTACK.name
+
+        # Log the result for debugging
+        log(f"[UNIT][{self.name}] Preferred Attack Style: {self.unit_preferred_attack_style} "
+            f"(Only Melee: {only_melee_percent:.2f}%, Melee: {melee_percent:.2f}%, "
+            f"Balanced: {balanced_percent:.2f}%, "
+            f"Ranged: {ranged_percent:.2f}%, Only Ranged: {only_ranged_percent:.2f}%)")
 
     def set_unit_target(self, enemy_unit):
         self.targeted_enemy_unit = enemy_unit
 
     def start_new_turn(self):
+        self.charge_roll = None
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
-        self.moral_check_passed = True
+        self.is_battle_shocked = False
         for model in self.models:
             model.start_new_turn()
 
@@ -285,8 +336,12 @@ class Unit:
         # Warlord multiplier
         warlord_multiplier = 1.5 if self.is_warlord_in_the_unit else 1.0
 
+        # To apply calculation for models left in the unit,
+        # it is not the same to have the initial force than having its half
+        remaining_models = len(self.get_models_alive()) / self.initial_force
+
         # Set threat level
-        self.unit_threat_level = self.unit_threat_level * warlord_multiplier
+        self.unit_threat_level = self.unit_threat_level * warlord_multiplier * remaining_models
 
 
 def get_distance(unit1, unit2):
