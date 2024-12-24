@@ -13,7 +13,7 @@ def is_model_within_engagement_range(target_enemy, position):
     # Define an engagement range (e.g., 1 unit)
     engagement_range = 1
     for enemy_model in target_enemy.models:
-        if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
+        if enemy_model.is_alive and position.distance(enemy_model.position) <= engagement_range:
             return True
     return False
 
@@ -118,8 +118,27 @@ class Model:
             log(f'[MODEL][{self.name}] has not saved anything, will receive entire attack')
         return wounds - saved_wounds
 
+    def get_available_ranged_weapons(self):
+        weapons = [weapon for weapon in self.weapons if weapon.type == WeaponType.RANGED.name]
+        assault_weapons = []
+        # If model has advanced this turn, it will be only able to shoot 'Assault' weapons
+        if self.has_advanced:
+            for weapon in weapons:
+                for ability in weapon.abilities:
+                    if 'Assault' in ability.name:
+                        assault_weapons.append(weapon)
+            weapons = assault_weapons
+        return weapons
+
     def get_description(self):
         return self.description
+
+    def get_distance_to_model(self, target_model):
+        pos1 = self.position
+        pos2 = target_model.position
+        if pos1 and pos2:
+            return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
+        return float('inf')
 
     def get_invulnerable_save(self):
         return self.invulnerable_save
@@ -199,11 +218,15 @@ class Model:
         return self.has_moved
 
     def move_to(self, position, advance_move):
-        log(f'\t\t\tModel [{self.name}] set at position {int(self.position.x), int(self.position.y)}')
-        self.position = position
-        self.has_moved = True
         if advance_move:
             self.has_advanced = True
+            log(f'\t\t\t[Model][{self.name}] ADVANCED {self.movement} + {advance_move}". '
+                f'It has been set at position {int(self.position.x), int(self.position.y)}')
+        else:
+            log(f'\t\t\t[Model][{self.name}] MOVED {self.movement}. '
+                f'It has been set at position {int(self.position.x), int(self.position.y)}')
+        self.position = position
+        self.has_moved = True
 
     def move_towards_target(self, board_map, target_enemy, advance_move):
         # Get target position and current position
@@ -320,6 +343,42 @@ class Model:
                 # This is boss unit basic model
                 return ModelPriority.UNIT_BOSS.value
 
+    def set_ranged_target_for_model(self, enemy_units_list):
+        at_least_one_shot_is_available = False
+
+        target_candidates = list()
+        # Find the most appropriate enemy unit to target based on proximity and weakness
+        for enemy_unit in enemy_units_list:
+            target_candidates.extend([
+                (enemy_unit, enemy_model, self.get_distance_to_model(enemy_model), enemy_unit.unit_threat_level)
+                for enemy_model in enemy_unit.get_models_alive()
+            ])
+
+        if target_candidates:
+            # Prioritize targets based on calculated priority
+            target_candidates.sort(key=lambda x: (x[2], x[3]))
+
+        weapons_list = self.get_available_ranged_weapons()
+
+        # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
+        for weapon in weapons_list:
+            weapon.target_unit = None
+            weapon.target_distance = None
+            for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
+                if weapon.get_weapon_range_attack() >= distance_to_enemy:
+                    at_least_one_shot_is_available = True
+                    weapon.target_unit = enemy_unit
+                    weapon.target_distance = distance_to_enemy
+                    # The main enemy unit is reachable!
+                    log((f'\t[{self.name}] {int(self.position.x), int(self.position.y)} '
+                         f'will shoot [{weapon.name}] [{weapon.range_attack}]. '
+                         f'Model seen [{enemy_model.name}] at '
+                         f'{int(enemy_model.position.x), int(enemy_model.position.y)} [{weapon.target_unit.name}]. '
+                         f'Distance to target {distance_to_enemy}"'))
+                    break
+        return at_least_one_shot_is_available
+
     def start_new_turn(self):
         self.has_advanced = False
         self.has_moved = False
+

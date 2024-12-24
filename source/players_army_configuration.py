@@ -283,6 +283,27 @@ players_army_configuration = \
                             }
                         ]
                     },
+                    {
+                        'unit_name': 'Termis',
+                        'models': [
+                            {
+                                'name': 'Terminator Champion',
+                                'amount': 1,
+                                'weapons': {
+                                    'RANGED': ['Combi-weapon'],
+                                    'MELEE': ['Accursed weapon']
+                                }
+                            },
+                            {
+                                'name': 'Chaos Terminator',
+                                'amount': 4,
+                                'weapons': {
+                                    'RANGED': ['Combi-weapon'],
+                                    'MELEE': ['Accursed weapon']
+                                }
+                            }
+                        ]
+                    },
                 ]
             },
         },

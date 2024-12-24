@@ -44,6 +44,16 @@ class Unit:
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
 
+    def calculate_unit_centroid(self):
+        # Calculate the centroid of the unit's polygon or point
+        self.form_unit_polygon()
+        if self.unit_polygon and not self.unit_polygon.is_empty:
+            # Shapely geometries (Point, LineString, Polygon) have a .centroid property
+            self.unit_centroid = self.unit_polygon.centroid
+        else:
+            # No valid geometry, set centroid to None
+            self.unit_centroid = None
+
     def calculate_unit_potential_damages(self):
         if self.get_models_alive():
             self.unit_potential_melee_damage = sum(model.model_potential_damage_melee_attack *
@@ -123,13 +133,8 @@ class Unit:
             # No models alive
             self.unit_polygon = None
 
-    def get_next_model_to_die(self):
-        # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
-        alive_models = self.get_models_alive()
-        if alive_models:
-            return min(alive_models, key=lambda model: model.priority_to_die)
-        else:
-            return None
+    def get_distance_to_target(self):
+        return get_distance(self, self.targeted_enemy_unit)
 
     def get_models_alive(self):
         models_left = [model for model in self.models if model.is_alive]
@@ -156,15 +161,13 @@ class Unit:
                         shooting_dict[entry_name]['count'] += 1
         return shooting_dict
 
-    def calculate_unit_centroid(self):
-        # Calculate the centroid of the unit's polygon or point
-        self.form_unit_polygon()
-        if self.unit_polygon and not self.unit_polygon.is_empty:
-            # Shapely geometries (Point, LineString, Polygon) have a .centroid property
-            self.unit_centroid = self.unit_polygon.centroid
+    def get_next_model_to_die(self):
+        # From list of Model in self.models get the Model which has the lowest Model.priority_to_die and Model.is_alive
+        alive_models = self.get_models_alive()
+        if alive_models:
+            return min(alive_models, key=lambda model: model.priority_to_die)
         else:
-            # No valid geometry, set centroid to None
-            self.unit_centroid = None
+            return None
 
     def get_unit_centroid(self):
         return self.unit_centroid
@@ -199,15 +202,15 @@ class Unit:
                 unit_movement = int(self.models[0].movement.replace('"', ''))
                 distance_to_target = get_distance(self, self.targeted_enemy_unit)
                 if distance_to_target > unit_movement + 6:
-                    log(f'\t[UNIT][{self.name}] Is {distance_to_target}" from its target. '
-                        f'It will be worth to force an advancing movement')
                     advance_move = dices.roll_dices("1D6")
+                    # Unit has advanced
+                    self.has_advanced = True
+                    log(f'\t[ADVANCING MOVEMENT][{self.name}] Is {distance_to_target}" from its target. '
+                        f'It will be worth to force an advancing movement. Additional movement of {advance_move}"')
 
             for model in self.get_models_alive():
                 model.move_towards_target(board_map, self.targeted_enemy_unit, advance_move)
 
-            # Unit has advanced
-            self.has_advanced = True
             self.has_moved = True
             self.calculate_unit_centroid()
 

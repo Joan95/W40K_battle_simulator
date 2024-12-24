@@ -33,8 +33,19 @@ class Army:
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
 
     def get_units_available_for_charging(self):
-        # MELEE units are considered available for charging
-        return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged() and not unit.has_unit_advanced()]
+        # Units are considered available for charging when:
+        # 1 - Unit has not advanced this turn
+        # 2 - Unit has not fell-back this turn
+        # 3 - Unit is not engaged
+        # 4 - Unit is 12" or less from an enemy unit
+        available_charge_units = list()
+        available_units = [unit for unit in self.get_units_alive()
+                           if not unit.is_unit_engaged() and not unit.has_unit_advanced()]
+        for unit in available_units:
+            distance_to_target = unit.get_distance_to_target()
+            if distance_to_target <= 12:
+                available_charge_units.append(unit)
+        return available_charge_units
 
     def get_units_available_for_moving(self):
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]

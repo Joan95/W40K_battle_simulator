@@ -17,6 +17,7 @@ class GameHandler:
         self.boardgame = board
         self.active_player = None
         self.inactive_player = None
+        self.current_phase = None
         self.turns_list = turns
         self.game_turn = 0
         self.phases = dict()
@@ -168,6 +169,9 @@ class GameHandler:
             ChargePhase.MAKE_CHARGE_ROLL.name: {
                 'main_function': self.make_charge_roll
             },
+            ChargePhase.MAKE_CHARGE_MOVEMENT.name: {
+                'main_function': self.make_charge_move
+            },
             ChargePhase.REPEAT_FOR_NEXT_ELIGIBLE_UNIT.name: {
                 'main_function': self.repeat_for_next_eligible_unit
             },
@@ -234,6 +238,7 @@ class GameHandler:
                 1 - COMMAND
                 2 - BATTLE-SHOCK
         """
+        self.current_phase = GamePhase.COMMAND_PHASE.name
         self.active_player.new_turn()
         self.inactive_player.new_turn()
         log(f'[{self.active_player.name}] danger score of {self.active_player.get_army_threat_level()}')
@@ -260,6 +265,7 @@ class GameHandler:
                 1 - MOVE UNITS
                 2 - REINFORCEMENTS
         """
+        self.current_phase = GamePhase.MOVEMENT_PHASE.name
         # Get enemy's alive units
         enemy_units = self.inactive_player.get_units_alive()
 
@@ -288,25 +294,36 @@ class GameHandler:
                 3 - MAKE RANGED ATTACKS
                 4 - REPEAT FOR NEXT ELIGIBLE UNIT
         """
+        self.current_phase = GamePhase.SHOOTING_PHASE.name
         self.active_player.set_units_for_shooting()
         return True
 
     def select_eligible_unit(self):
         selected_unit = self.active_player.get_next_unit_for_shooting_or_charging()
-        if selected_unit:
-            log(f'[REPORT][{self.active_player.name}] selects unit: [{selected_unit.name}]')
-        else:
-            log(f'[REPORT][{self.active_player.name}] no more units eligible to proceed')
+        if self.current_phase == GamePhase.SHOOTING_PHASE.name:
+            if selected_unit:
+                log(f'[REPORT][{self.active_player.name}] resolving attack for selected unit: [{selected_unit.name}]')
+            else:
+                log(f'[REPORT][{self.active_player.name}] no more units eligible for shooting to proceed')
+        elif self.current_phase == GamePhase.CHARGE_PHASE.name:
+            if selected_unit:
+                log(f'[REPORT][{self.active_player.name}] resolving charge for selected unit: [{selected_unit.name}]')
+            else:
+                log(f'[REPORT][{self.active_player.name}] no more units eligible for charging to proceed')
         return True
 
     def select_targets(self):
-        if self.active_player.get_selected_unit():
-            # Choose targets for that unit
-            enemy_units = self.inactive_player.get_units_alive()
-            self.active_player.set_target_for_selected_unit(enemy_units)
-            if not self.active_player.get_selected_unit().has_shoot:
-                log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target near. '
-                    f'It won\'t shoot this turn')
+        if self.current_phase == GamePhase.SHOOTING_PHASE.name:
+            if self.active_player.get_selected_unit():
+                # Choose ranged targets for that unit
+                enemy_units = self.inactive_player.get_units_alive()
+                self.active_player.set_ranged_target_for_selected_unit(enemy_units)
+                if not self.active_player.get_selected_unit().has_shoot:
+                    log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target '
+                        f'near. It won\'t shoot this turn')
+        elif self.current_phase == GamePhase.CHARGE_PHASE.name:
+            if self.active_player.get_selected_unit():
+                pass
         return True
 
     def make_ranged_attacks(self):
@@ -341,10 +358,18 @@ class GameHandler:
                 4 - MAKE CHARGE MOVE
                 5 - REPEAT FOR NEXT ELIGIBLE UNIT
         """
+        self.current_phase = GamePhase.CHARGE_PHASE.name
         self.active_player.set_units_for_charge()
         return True
 
     def make_charge_roll(self):
+        if self.active_player.get_selected_unit():
+            # Roll for charging roll
+            self.active_player.dices.roll_dices('2D6')
+            pass
+        return True
+
+    def make_charge_move(self):
         return True
 
     def fight_phase(self):
@@ -356,6 +381,7 @@ class GameHandler:
                     2 - MAKE MELEE ATTACKS
                     3 - CONSOLIDATE
         """
+        self.current_phase = GamePhase.FIGHT_PHASE.name
         return True
 
     def fight_first(self):

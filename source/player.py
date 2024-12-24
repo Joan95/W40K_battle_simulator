@@ -76,7 +76,7 @@ class Player:
         return model.receive_damage(damage)
 
     def are_more_units_to_be_selected(self):
-        if self.unit_idx < len(self.units_selection_list):
+        if self.units_selection_list and self.unit_idx < len(self.units_selection_list):
             log(f'\t[PLAYER {self.name}] there are still units left to be selected')
             return True
         log(f'\t[PLAYER {self.name}] no more units left to be selected')
@@ -251,60 +251,22 @@ class Player:
         log(f"\t[PLAYER {self.name}] will be the {role_color}{role_name}{Fore.RESET}", True)
         self.rol = rol
 
-    def set_target_for_model(self, model, enemy_units_list):
-        at_least_one_shot_is_available = False
-
-        target_candidates = list()
-        # Find the most appropriate enemy unit to target based on proximity and weakness
-        for enemy_unit in enemy_units_list:
-            target_candidates.extend([
-                (enemy_unit, enemy_model, get_distance_between_models(model, enemy_model), enemy_unit.unit_threat_level)
-                for enemy_model in enemy_unit.get_models_alive()
-            ])
-
-        if target_candidates:
-            # Prioritize targets based on calculated priority
-            target_candidates.sort(key=lambda x: (x[2], x[3]))
-
-        # Let's see if target unit is reachable, otherwise we might want to allocate the shoots to another unit
-        for weapon in model.get_model_weapons_ranged():
-            weapon.target_unit = None
-            weapon.target_distance = None
-            for enemy_unit, enemy_model, distance_to_enemy, enemy_unit_total_score in target_candidates:
-                if weapon.get_weapon_range_attack() >= distance_to_enemy:
-                    at_least_one_shot_is_available = True
-                    weapon.target_unit = enemy_unit
-                    weapon.target_distance = distance_to_enemy
-                    # The main enemy unit is reachable!
-                    log((f'\t[{model.name}] {int(model.position.x), int(model.position.y)} '
-                         f'will shoot {weapon.name} [{weapon.range_attack}]. '
-                         f'Model seen [{enemy_model.name}] at '
-                         f'{int(enemy_model.position.x), int(enemy_model.position.y)} [{weapon.target_unit.name}]. '
-                         f'Distance to target {distance_to_enemy}"'))
-                    break
-        return at_least_one_shot_is_available
-
-    def set_target_for_selected_unit(self, enemy_units_list):
+    def set_ranged_target_for_selected_unit(self, enemy_units_list):
         for model in self.selected_unit.get_unit_models_available_for_shooting():
-            if self.set_target_for_model(model, enemy_units_list):
+            if model.set_ranged_target_for_model(enemy_units_list):
                 self.selected_unit.has_shoot = True
 
     def set_units_for_charge(self):
         self.unit_idx = 0
         self.units_selection_list = self.army.get_units_available_for_charging()
-        log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for charging are: '
-            f'{", ".join([unit.name for unit in self.units_selection_list])}')
+        if self.units_selection_list:
+            log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for charging are: '
+                f'{", ".join([unit.name for unit in self.units_selection_list])}')
+        else:
+            log(f'\t[PLAYER {self.name}] no units available for charging')
 
     def set_units_for_shooting(self):
         self.unit_idx = 0
         self.units_selection_list = self.army.get_units_available_for_shooting()
         log(f'\t[PLAYER {self.name}] units available (alive and not engaged) for shooting are: '
             f'{", ".join([unit.name for unit in self.units_selection_list])}')
-
-
-def get_distance_between_models(model1, model2):
-    pos1 = model1.position
-    pos2 = model2.position
-    if pos1 and pos2:
-        return ((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2) ** 0.5
-    return float('inf')
