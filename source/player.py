@@ -112,11 +112,21 @@ class Player:
     def get_last_rolled_dice_values(self):
         return self.dices.last_roll_dice_values
 
+    def get_next_unit_for_shooting_or_charging(self):
+        self.selected_unit = None
+        if self.units_selection_list and self.units_selection_list[self.unit_idx]:
+            self.selected_unit = self.units_selection_list[self.unit_idx]
+            self.unit_idx += 1
+        return self.selected_unit
+
     def get_selected_unit(self):
         return self.selected_unit
 
     def get_unit_to_deploy(self):
         return self.army.get_unit_to_deploy()
+
+    def get_units_for_battle_shock(self):
+        return self.army.get_units_for_battle_shock()
 
     def get_units_alive(self):
         """Return a list of alive units."""
@@ -232,13 +242,6 @@ class Player:
     def set_faction(self, faction_cfg):
         """Set the player's faction."""
         self.faction = f"{BOLD_ON}{self.factions_color}{faction_cfg}{Fore.RESET}{BOLD_OFF}"
-
-    def get_next_unit_for_shooting_or_charging(self):
-        self.selected_unit = None
-        if self.units_selection_list and self.units_selection_list[self.unit_idx]:
-            self.selected_unit = self.units_selection_list[self.unit_idx]
-            self.unit_idx += 1
-        return self.selected_unit
 
     def set_rol(self, rol):
         """Set the player's role (attacker or defender)."""

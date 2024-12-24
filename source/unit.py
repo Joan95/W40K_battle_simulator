@@ -12,9 +12,12 @@ class Unit:
     def __init__(self, name, models):
         self.raw_name = name
         self.name = name
+        self.models = models
 
-        self.battle_shock_passed = True
+        self.charge_roll = None
+        self.initial_force = len(self.models)
         self.is_alive = True
+        self.is_battle_shocked = False
         self.is_engaged = False
         self.is_unit_visible = True
         self.is_warlord_in_the_unit = False
@@ -22,10 +25,8 @@ class Unit:
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
-        self.models = models
         self.targeted_enemy_unit = None
         self.unit_centroid = None
-        self.unit_initial_force = len(self.models)
         self.unit_leadership = None
         self.unit_preferred_attack_style = None
         self.unit_polygon = None
@@ -76,7 +77,7 @@ class Unit:
     def calculate_unit_objective_control(self):
         # Unit only has some objective control if it has passed the moral check, performed when unit current
         # members are lower than half of its initial force
-        if self.battle_shock_passed:
+        if not self.is_battle_shocked:
             self.unit_objective_control = sum(model.objective_control for model in self.get_models_alive())
         else:
             self.unit_objective_control = 0
@@ -105,8 +106,38 @@ class Unit:
     def check_if_warlord_in_unit(self):
         self.is_warlord_in_the_unit = any(model.is_warlord for model in self.models)
 
-    def do_moral_check(self, value):
-        pass
+    def do_charge_roll(self, dices):
+        dices.roll_dices('2D6')
+        charge_roll_value = 0
+        for dice in dices.last_roll_dice_values:
+            charge_roll_value += dice
+        distance_to_target = self.get_distance_to_target()
+        if charge_roll_value >= distance_to_target:
+            self.charge_roll = charge_roll_value
+            log(f'[UNIT][{self.name}] Charge roll of {charge_roll_value} is greater than target distance of '
+                f'{distance_to_target}. '
+                f'[{self.name}] will charge [{self.targeted_enemy_unit.name}]')
+        else:
+            self.charge_roll = None
+            log(f'[UNIT][{self.name}] Charge roll of {charge_roll_value} is less than target distance of '
+                f'{distance_to_target}. '
+                f'[{self.name}] will not charge')
+
+    def do_moral_check(self, dices):
+        dices.roll_dices('2D6')
+        moral_check_value = 0
+        for dice in dices.last_roll_dice_values:
+            moral_check_value += dice
+
+        leadership = self.get_next_model_to_die().get_leadership()
+        if moral_check_value >= leadership:
+            log(f'[UNIT][{self.name}] {moral_check_value} is greater than needed leadership of {leadership}+ '
+                f'has successfully passed the moral check')
+            self.is_battle_shocked = False
+        else:
+            log(f'[UNIT][{self.name}] {moral_check_value} does not reach the needed leadership of {leadership}+. '
+                f'Unit has not passed the moral check, now it is battle-shocked')
+            self.is_battle_shocked = True
 
     def form_unit_polygon(self):
         # Creates unit's polygon from models' positions
@@ -183,7 +214,7 @@ class Unit:
 
     def get_unit_toughness(self):
         log(f'\t\t[UNIT] Checking unit\'s toughness')
-        return self.models[0].get_model_toughness()
+        return self.get_next_model_to_die().get_model_toughness()
 
     def has_unit_advanced(self):
         return self.has_advanced
@@ -268,10 +299,11 @@ class Unit:
         self.targeted_enemy_unit = enemy_unit
 
     def start_new_turn(self):
+        self.charge_roll = None
         self.has_advanced = False
         self.has_moved = False
         self.has_shoot = False
-        self.battle_shock_passed = True
+        self.is_battle_shocked = False
         for model in self.models:
             model.start_new_turn()
 
@@ -300,7 +332,7 @@ class Unit:
 
         # To apply calculation for models left in the unit,
         # it is not the same to have the initial force than having its half
-        remaining_models = len(self.get_models_alive()) / self.unit_initial_force
+        remaining_models = len(self.get_models_alive()) / self.initial_force
 
         # Set threat level
         self.unit_threat_level = self.unit_threat_level * warlord_multiplier * remaining_models

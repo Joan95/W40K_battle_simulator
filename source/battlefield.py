@@ -1,5 +1,6 @@
 import random
 from colorama import Fore
+
 from logging_handler import log
 from model import Model
 from shapely.geometry import Point, Polygon

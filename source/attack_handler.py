@@ -11,7 +11,7 @@ from logging_handler import log
 
 
 class AttackHandler:
-    def __init__(self, boardgame):
+    def __init__(self, killing_report, boardgame):
         self.attacker = None
         self.attacking_model = None
         self.attacking_weapon = None
@@ -21,6 +21,7 @@ class AttackHandler:
         self.defender = None
         self.defender_unit = None
         self.defender_model = None
+        self.killing_report = killing_report
         self.num_attacks = None
         self.attack_steps = dict()
 

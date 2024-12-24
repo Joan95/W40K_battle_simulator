@@ -11,9 +11,9 @@ BOLD_OFF = "\033[0m"
 
 def is_model_within_engagement_range(target_enemy, position):
     # Define an engagement range (e.g., 1 unit)
-    engagement_range = 1
+    engagement_range = 1.5
     for enemy_model in target_enemy.models:
-        if enemy_model.is_alive and position.distance(enemy_model.position) <= engagement_range:
+        if enemy_model.is_alive and position.distance(enemy_model.position) < engagement_range:
             return True
     return False
 
@@ -78,9 +78,9 @@ class Model:
         self.can_be_disengaged_from_unit = 'CHARACTER' in keywords
         self.has_advanced = False
         self.has_moved = False
-        self.is_warlord = is_warlord
         self.is_alive = True
         self.is_visible = True
+        self.is_warlord = is_warlord
         self.is_wounded = False
         self.model_impact_probability_melee_attack = 0
         self.model_impact_probability_ranged_attack = 0
@@ -142,6 +142,9 @@ class Model:
 
     def get_invulnerable_save(self):
         return self.invulnerable_save
+
+    def get_leadership(self):
+        return self.leadership
 
     def get_model_melee_weapons_hit_probability_and_damage(self):
         melee_weapons = self.get_model_weapons_melee()

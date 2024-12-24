@@ -6,6 +6,8 @@ class Army:
 
     def add_unit_into_army(self, unit):
         self.units.append(unit)
+        # Calculate army thread level
+        self.calculate_danger_score()
 
     def are_there_units_still_to_be_deployed(self):
         return self.check_units_left_to_deploy() > 0
@@ -46,6 +48,9 @@ class Army:
             if distance_to_target <= 12:
                 available_charge_units.append(unit)
         return available_charge_units
+
+    def get_units_for_battle_shock(self):
+        return [unit for unit in self.get_units_alive() if len(unit.get_models_alive()) < (unit.initial_force / 2)]
 
     def get_units_available_for_moving(self):
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]

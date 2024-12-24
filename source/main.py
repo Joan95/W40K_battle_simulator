@@ -4,6 +4,7 @@ from colorama import init
 from database_handler import DatabaseHandler
 from enums import PlayerRol
 from game_handler import GameHandler
+from killing_report_handler import KillingReportHandler
 from logging_handler import log
 from players_army_configuration import players_army_configuration as players_cfg
 from player import Player
@@ -128,7 +129,8 @@ if __name__ == '__main__':
         board.display_board()
         # Initiatives
         turn_list = initiatives(p1, p2)
-        game_handler = GameHandler(turn_list, board)
+        killing_report = KillingReportHandler()
+        game_handler = GameHandler(killing_report, turn_list, board)
         game_handler.run_game()
         board.display_board()
     except KeyboardInterrupt:

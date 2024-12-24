@@ -13,16 +13,17 @@ from logging_handler import log
 
 
 class GameHandler:
-    def __init__(self, turns, board):
+    def __init__(self, killing_report, turns, board):
         self.boardgame = board
         self.active_player = None
         self.inactive_player = None
         self.current_phase = None
+        self.killing_report = killing_report
         self.turns_list = turns
         self.game_turn = 0
         self.phases = dict()
         # Attack resolver handler
-        self.resolve_attack = AttackHandler(self.boardgame)
+        self.resolve_attack = AttackHandler(self.killing_report, self.boardgame)
 
         # If here all the Units have been displayed so the game can start!
         self.boardgame.start_game()
@@ -33,7 +34,7 @@ class GameHandler:
     def execute_all_phases(self):
         for count, phase_name in enumerate(self.phases, start=1):
             phase = self.phases[phase_name]
-            feedback = self.execute_main_phases(phase_name, phase, count)
+            self.execute_main_phases(phase_name, phase, count)
 
     def execute_main_phases(self, phase_name, phase_dict, phase_number, upper_phase=None):
         current_phase_function = phase_dict['main_function']
@@ -251,12 +252,10 @@ class GameHandler:
         return True
 
     def battle_shock(self):
-        for unit in self.active_player.get_units_alive():
-            if len(unit.models) < unit.unit_initial_force / 2:
-                log(f"[REPORT] Unit {unit.name} at half of its initial force, "
-                    f"will have to throw the dices for checking its moral", True)
-                self.active_player.roll_dice()
-                unit.do_moral_check(self.active_player.last_roll_dice)
+        for unit in self.active_player.get_units_for_battle_shock():
+            log(f"[REPORT] Unit {unit.name} at half or less of its initial force. "
+                f"Number of Models in Unit {len(unit.get_models_alive())}, initial Models {unit.initial_force}", True)
+            unit.do_moral_check(self.active_player.dices)
         return True
 
     def movement_phase(self):
@@ -313,16 +312,19 @@ class GameHandler:
         return True
 
     def select_targets(self):
+        attacking_unit = self.active_player.get_selected_unit()
         if self.current_phase == GamePhase.SHOOTING_PHASE.name:
-            if self.active_player.get_selected_unit():
+            if attacking_unit:
+                # New report
+                self.killing_report.add_attacking_unit(self.game_turn, attacking_unit)
                 # Choose ranged targets for that unit
                 enemy_units = self.inactive_player.get_units_alive()
                 self.active_player.set_ranged_target_for_selected_unit(enemy_units)
-                if not self.active_player.get_selected_unit().has_shoot:
-                    log(f'[REPORT] [{self.active_player.get_selected_unit().name}] does not have any valid target '
+                if not attacking_unit.has_shoot:
+                    log(f'[REPORT] [{attacking_unit.name}] does not have any valid target '
                         f'near. It won\'t shoot this turn')
         elif self.current_phase == GamePhase.CHARGE_PHASE.name:
-            if self.active_player.get_selected_unit():
+            if attacking_unit:
                 pass
         return True
 
@@ -363,13 +365,15 @@ class GameHandler:
         return True
 
     def make_charge_roll(self):
-        if self.active_player.get_selected_unit():
-            # Roll for charging roll
-            self.active_player.dices.roll_dices('2D6')
-            pass
+        attacking_unit = self.active_player.get_selected_unit()
+        if attacking_unit:
+            attacking_unit.do_charge_roll(self.active_player.dices)
         return True
 
     def make_charge_move(self):
+        attacking_unit = self.active_player.get_selected_unit()
+        if attacking_unit and attacking_unit.charge_roll:
+            pass
         return True
 
     def fight_phase(self):
