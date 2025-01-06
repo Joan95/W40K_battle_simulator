@@ -15,16 +15,18 @@ class Unit:
         self.models = models
 
         self.charge_roll = None
+        self.charge_first = False
+        self.fight_first_ability = False
+        self.has_been_deployed = False
+        self.has_advanced = False
+        self.has_moved = False
+        self.has_shoot = False
         self.initial_force = len(self.models)
         self.is_alive = True
         self.is_battle_shocked = False
         self.is_engaged = False
         self.is_unit_visible = True
         self.is_warlord_in_the_unit = False
-        self.has_been_deployed = False
-        self.has_advanced = False
-        self.has_moved = False
-        self.has_shoot = False
         self.targeted_enemy_unit = None
         self.unit_centroid = None
         self.unit_leadership = None
@@ -41,6 +43,7 @@ class Unit:
         self.check_if_warlord_in_unit()
         self.set_unit_preferred_attack_style()
         self.update_unit_total_score()
+        log(f'[UNIT]{self.name} has a THREAT LEVEL of {self.unit_threat_level}')
 
         if self.is_warlord_in_the_unit:
             self.name = f'{Fore.MAGENTA}{BOLD_ON}{self.raw_name} (WL){BOLD_OFF}'
@@ -91,6 +94,8 @@ class Unit:
     def charge_target(self, board_map):
         for model in self.get_models_alive():
             model.charge_target(board_map, self.targeted_enemy_unit, self.charge_roll)
+        if not self.targeted_enemy_unit.fight_first_ability:
+            self.charge_first = True
         self.is_engaged = True
         self.targeted_enemy_unit.is_engaged = True
 
@@ -305,6 +310,7 @@ class Unit:
         self.targeted_enemy_unit = enemy_unit
 
     def start_new_turn(self):
+        self.charge_first = False
         self.charge_roll = None
         self.has_advanced = False
         self.has_moved = False

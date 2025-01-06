@@ -60,5 +60,8 @@ class Army:
         # advanced this turn
         return [unit for unit in self.get_units_alive() if not unit.is_unit_engaged()]
 
+    def get_units_fight_first(self):
+        return [unit for unit in self.units if unit.charge_first]
+
     def get_threat_level(self):
         return self.army_threat_level

@@ -1,6 +1,7 @@
 from enums import AttackSteps
 from logging_handler import log
 
+
 class WeaponAbility:
     def __init__(self, name):
         self.name = name

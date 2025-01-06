@@ -59,7 +59,7 @@ class Weapon:
             # If the damage is a fixed number (e.g., "4"), just use it directly
             average_damage = int(self.damage)
 
-        log(f'[WEAPON][{self.name}] potential damage: {average_damage} per attack')
+        log(f'[WEAPON][{self.name}] potential damage: {average_damage} wounds per attack')
         return average_damage
 
     def get_armour_penetration(self):
