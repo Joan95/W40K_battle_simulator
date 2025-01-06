@@ -392,6 +392,10 @@ class GameHandler:
         return True
 
     def fight_first(self):
+        active_units = self.active_player.get_units_fight_first()
+        passive_units = self.inactive_player.get_units_fight_first()
+        if active_units or passive_units:
+            pass
         return True
 
     def remaining_combats(self):

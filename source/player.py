@@ -132,6 +132,9 @@ class Player:
     def get_units_available_for_moving(self):
         return self.army.get_units_available_for_moving()
 
+    def get_units_fight_first(self):
+        return self.army.get_units_fight_first()
+
     def get_units_for_battle_shock(self):
         return self.army.get_units_for_battle_shock()
 
